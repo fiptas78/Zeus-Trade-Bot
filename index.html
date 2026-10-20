@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ZEUS TRADE BOT v17.9 - RSI 80 LİMİT KORUMASI</title>
+<title>ZEUS TRADE BOT V1- RSI 80 LİMİT KORUMASI</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
 body { background: #0a0e17; color: #c9d1d9; padding: 20px; max-width: 1600px; margin: 0 auto; }
@@ -339,7 +339,7 @@ button.stop { background: #da3633; }
     </div>
 </div>
 
-<h1>⚡ ZEUS TRADE BOT v18 <span class="cors-status cors-ok" id="corsStatus">BN + BY + RSI 80 LİMİT</span><span class="liq-badge">FINAL</span></h1>
+<h1>⚡ ZEUS TRADE BOT V1 <span class="cors-status cors-ok" id="corsStatus">BN + BY + RSI 80 LİMİT</span><span class="liq-badge">FINAL</span></h1>
 <p class="subtitle"><span class="live-indicator"></span>CANLI • RSI 80/20 Sert Limit • Geç Sinyal Engelleme • Haber Analizi • Likidite Yorumu • Telegram Sinyal Paneli</p>
 <div class="controls">
 <button id="startBtn" onclick="startBot()">▶️ Botu Başlat</button>
@@ -560,7 +560,7 @@ ANLIK HABER SİNYALLERİ (NEWS PUMP/DUMP)
 
 <div class="disclaimer">⚠️ Yatırım tavsiyesi değildir. Futures işlemleri yüksek risk içerir. Veriler Binance ve Bybit'ten ortaklaşa alınır.</div>
 <div class="log" id="log">
-<div class="log-entry"><span class="time">[Sistem]</span> Zeus Trade Bot v17.9 yüklendi. Tüm özellikler aktif.</div>
+<div class="log-entry"><span class="time">[Sistem]</span> Zeus Trade Bot V1 yüklendi. Tüm özellikler aktif.</div>
 </div>
 
 <script>
@@ -617,10 +617,15 @@ function handleLogin() {
     const found = appUsers.find(u => u.user === user && u.pass === pass);
     if(found) {
         document.getElementById('authOverlay').style.display = 'none';
+        
+        // --- BURAYI EKLEYİN: Giriş yaptığını hatırla ---
+        localStorage.setItem('zeusLoggedInUser', user);
+        // ---------------------------------------------
+
         if(found.role === 'admin') {
             document.getElementById('adminPanel').style.display = 'block';
             renderAdminUserList();
-            renderAdminPendingList(); // <-- BURAYI EKLE: Admin girer girmez bekleyenleri listeler
+            renderAdminPendingList();
         } else {
             document.getElementById('adminPanel').style.display = 'none';
         }
@@ -662,6 +667,10 @@ function handleRegister() {
 }
 
 function handleLogout() {
+    // --- BURAYI EKLEYİN: Hafızadaki oturumu sil ---
+    localStorage.removeItem('zeusLoggedInUser');
+    // -------------------------------------------
+
     document.getElementById('authOverlay').style.display = 'flex';
     document.getElementById('loginUser').value = '';
     document.getElementById('loginPass').value = '';
@@ -816,7 +825,7 @@ if (!telegramSettings.botToken || !telegramSettings.chatId) {
 alert('Lütfen önce Bot Token ve Chat ID girin!');
 return;
 }
-const testMsg = `⚡ *ZEUS TRADE BOT v17.9* \n\n✅ Telegram bağlantı testi başarılı! Sinyal paneli aktif ve çalışıyor.`;
+const testMsg = `⚡ *ZEUS TRADE BOT V1* \n\n✅ Telegram bağlantı testi başarılı! Sinyal paneli aktif ve çalışıyor.`;
 const success = await sendTelegramMessage(testMsg);
 if (success) alert('Test mesajı Telegram kanalına gönderildi!');
 else alert('Mesaj gönderilemedi! Token veya Chat ID bilgilerini kontrol edin.');
@@ -2176,7 +2185,7 @@ async function scanOnce() {
 
 function startBot() {
   if (botInterval) return;
-  log('🚀 Zeus Trade Bot v17.9 FINAL başlatıldı - Tüm özellikler aktif', 'success');
+  log('🚀 Zeus Trade Bot V1 FINAL başlatıldı - Tüm özellikler aktif', 'success');
   scanOnce();
   botInterval = setInterval(scanOnce, CONFIG.refreshInterval);
   checkInterval = setInterval(checkPendingSignals, CONFIG.checkInterval);
@@ -2224,6 +2233,25 @@ async function checkRemoteStatus() {
 checkRemoteStatus(); 
 
 loadLearningData();
+// Sayfa açıldığında daha önce giriş yapıldıysa direkt paneli aç
+window.addEventListener('DOMContentLoaded', () => {
+    loadUsers();
+    const savedUser = localStorage.getItem('zeusLoggedInUser');
+    if (savedUser) {
+        const found = appUsers.find(u => u.user === savedUser);
+        if (found) {
+            document.getElementById('authOverlay').style.display = 'none';
+            if (found.role === 'admin') {
+                document.getElementById('adminPanel').style.display = 'block';
+                renderAdminUserList();
+                renderAdminPendingList();
+            } else {
+                document.getElementById('adminPanel').style.display = 'none';
+            }
+        }
+    }
+});
+
 loadTelegramSettings();
 updateLearningDisplay();
 updateLiquidityDisplay();
