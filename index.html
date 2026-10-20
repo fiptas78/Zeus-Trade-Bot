@@ -1,0 +1,2288 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZEUS TRADE BOT v17.9 - RSI 80 LİMİT KORUMASI</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+body { background: #0a0e17; color: #c9d1d9; padding: 20px; max-width: 1600px; margin: 0 auto; }
+h1 { color: #58a6ff; margin-bottom: 5px; }
+.subtitle { color: #8b949e; margin-bottom: 20px; font-size: 14px; }
+.controls { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+button { background: #238636; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+button:hover { background: #2ea043; }
+button:disabled { background: #30363d; color: #8b949e; cursor: not-allowed; }
+button.stop { background: #da3633; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 20px; }
+.stat-box { background: #161b22; padding: 12px; border-radius: 8px; border: 1px solid #30363d; }
+.stat-box .label { color: #8b949e; font-size: 11px; text-transform: uppercase; }
+.stat-box .value { color: #58a6ff; font-size: 20px; font-weight: bold; margin-top: 4px; }
+.filter-bar { display: flex; gap: 12px; margin-bottom: 15px; flex-wrap: wrap; align-items: center; background: #161b22; padding: 12px; border-radius: 8px; border: 1px solid #30363d; }
+.filter-bar label { color: #8b949e; font-size: 13px; }
+.filter-bar select, .filter-bar input { background: #0d1117; color: #c9d1d9; border: 1px solid #30363d; padding: 8px 12px; border-radius: 6px; font-size: 13px; }
+.liquidity-map { background: linear-gradient(135deg, #0d1117 0%, #161b22 100%); border: 2px solid #f78166; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+.liquidity-map h2 { color: #f78166; font-size: 20px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
+.liquidity-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+@media (max-width: 900px) { .liquidity-grid { grid-template-columns: 1fr; } }
+.liq-zone-card { background: #161b22; border-radius: 10px; padding: 16px; border: 1px solid #30363d; }
+.liq-zone-title { font-size: 14px; font-weight: bold; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+.liq-zone-title.long { color: #3fb950; }
+.liq-zone-title.short { color: #f85149; }
+.liq-zones-list { display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; }
+.liq-zone-item { background: #0d1117; padding: 10px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+.liq-zone-item .zone-price { font-weight: bold; color: #f0f6fc; }
+.liq-zone-item .zone-coin { color: #58a6ff; font-weight: bold; font-size: 11px; }
+.liq-zone-item .zone-oi { color: #8b949e; font-size: 11px; }
+.liq-zone-item .zone-strength { font-weight: bold; padding: 2px 8px; border-radius: 4px; font-size: 10px; }
+.zone-strength.strong { background: rgba(248,81,73,0.2); color: #f85149; }
+.zone-strength.medium { background: rgba(210,153,34,0.2); color: #d29922; }
+.zone-strength.weak { background: rgba(139,148,158,0.2); color: #8b949e; }
+.ls-ratio-display { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 15px; }
+.ls-box { background: #161b22; padding: 12px; border-radius: 8px; text-align: center; border: 1px solid #30363d; }
+.ls-box .ls-label { font-size: 10px; color: #8b949e; text-transform: uppercase; margin-bottom: 4px; }
+.ls-box .ls-value { font-size: 22px; font-weight: bold; }
+.ls-box .ls-value.long-dom { color: #3fb950; }
+.ls-box .ls-value.short-dom { color: #f85149; }
+.ls-box .ls-value.neutral { color: #8b949e; }
+.ls-bar { height: 8px; background: #21262d; border-radius: 4px; overflow: hidden; margin-top: 6px; display: flex; }
+.ls-bar-long { background: linear-gradient(90deg, #238636, #3fb950); height: 100%; }
+.ls-bar-short { background: linear-gradient(90deg, #da3633, #f85149); height: 100%; }
+.liquidity-alert { background: rgba(247, 129, 102, 0.1); border: 1px solid #f78166; border-radius: 8px; padding: 12px; margin-top: 10px; }
+.liquidity-alert h4 { color: #f78166; font-size: 13px; margin-bottom: 8px; }
+.alert-item { padding: 10px 12px; margin-bottom: 8px; border-radius: 6px; font-size: 12px; display: flex; align-items: flex-start; gap: 10px; line-height: 1.4; }
+.alert-item.danger { background: rgba(248, 81, 73, 0.15); border-left: 4px solid #f85149; }
+.alert-item.warning { background: rgba(210, 153, 34, 0.15); border-left: 4px solid #d29922; }
+.alert-item.opportunity { background: rgba(63, 185, 80, 0.15); border-left: 4px solid #3fb950; }
+.alert-item .coin-tag { background: rgba(88,166,255,0.2); color: #58a6ff; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; min-width: 65px; text-align: center; flex-shrink: 0; }
+.alert-item .score-tag { background: rgba(247,129,102,0.2); color: #f78166; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-left: auto; flex-shrink: 0; }
+.alert-text { flex: 1; }
+.alert-text .unusual { color: #f85149; font-weight: 900; letter-spacing: 0.5px; display: block; margin-bottom: 4px; font-size: 13px; }
+
+/* AI ÖĞRENME PANELİ STİLLERİ */
+.ai-panel { background: #161b22; border: 2px solid #bc8cff; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+.ai-panel h2 { color: #bc8cff; font-size: 20px; margin-bottom: 15px; }
+.ai-panel h3 { color: #58a6ff; margin: 15px 0 10px; font-size: 14px; }
+.ai-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px; }
+.ai-stat-card { background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 15px; }
+.ai-stat-card .card-title { color: #8b949e; font-size: 11px; text-transform: uppercase; margin-bottom: 8px; font-weight: bold; }
+.ai-stat-card .card-value { font-size: 22px; font-weight: bold; color: #58a6ff; }
+.insights-box { background: #0d1117; border: 1px solid #bc8cff; border-radius: 8px; padding: 12px; margin-top: 10px; }
+.insights-box h4 { color: #bc8cff; font-size: 13px; margin-bottom: 8px; }
+.insight-item { padding: 8px 10px; margin-bottom: 6px; border-radius: 6px; font-size: 12px; line-height: 1.4; }
+.insight-item.positive { background: rgba(63, 185, 80, 0.1); border-left: 3px solid #3fb950; }
+.insight-item.negative { background: rgba(248, 81, 73, 0.1); border-left: 3px solid #f85149; }
+.insight-item.neutral { background: rgba(88, 166, 255, 0.1); border-left: 3px solid #58a6ff; }
+.ai-metric { display: flex; justify-content: space-between; align-items: center; padding: 8px; margin-bottom: 6px; background: #0d1117; border-radius: 6px; font-size: 12px; }
+.ai-metric .label { color: #8b949e; flex: 1; }
+.ai-metric .value { font-weight: bold; min-width: 80px; text-align: right; }
+.ai-metric .value.good { color: #3fb950; }
+.ai-metric .value.bad { color: #f85149; }
+.ai-metric .value.neutral { color: #d29922; }
+.weight-bar { height: 6px; background: #21262d; border-radius: 3px; overflow: hidden; margin-top: 4px; width: 100px; }
+.weight-fill { height: 100%; border-radius: 3px; }
+.weight-fill.high { background: linear-gradient(90deg, #238636, #3fb950); }
+.weight-fill.medium { background: linear-gradient(90deg, #d29922, #e3b341); }
+.weight-fill.low { background: linear-gradient(90deg, #da3633, #f85149); }
+
+.log { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 12px; margin-top: 20px; max-height: 200px; overflow-y: auto; font-family: 'Consolas', monospace; font-size: 12px; }
+.log-entry { margin-bottom: 4px; padding-bottom: 4px; border-bottom: 1px solid #21262d; }
+.log-entry .time { color: #58a6ff; margin-right: 6px; }
+.live-indicator { display: inline-block; width: 8px; height: 8px; background: #238636; border-radius: 50%; margin-right: 6px; animation: pulse 2s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+.disclaimer { background: rgba(218, 54, 51, 0.1); border: 1px solid #da3633; border-radius: 8px; padding: 12px; margin-top: 20px; font-size: 12px; color: #f85149; text-align: center; }
+.brain-badge { display: inline-block; background: linear-gradient(135deg, #bc8cff, #58a6ff); color: #0d1117; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 6px; }
+.strategy-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 4px; }
+.strategy-badge.scalping { background: rgba(248, 81, 73, 0.2); color: #f85149; }
+.strategy-badge.swing { background: rgba(88, 166, 255, 0.2); color: #58a6ff; }
+.strategy-badge.breakout { background: rgba(210, 153, 34, 0.2); color: #d29922; }
+.strategy-badge.liquidity { background: rgba(247, 129, 102, 0.2); color: #f78166; }
+.strategy-badge.harmonic { background: linear-gradient(135deg, #FFD700, #FFA500); color: #000; font-weight: bold; }
+.strategy-badge.banned { background: rgba(248, 81, 73, 0.3); color: #f85149; text-decoration: line-through; }
+.cors-status { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-left: 10px; }
+.cors-ok { background: rgba(63,185,80,0.2); color: #3fb950; }
+.liq-badge { display: inline-block; background: linear-gradient(135deg, #f78166, #f85149); color: white; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; margin-left: 10px; }
+.trade-recommendations { background: #161b22; border: 2px solid #d29922; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+.trade-recommendations h2 { color: #d29922; font-size: 20px; margin-bottom: 15px; }
+.trade-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 15px; }
+.trade-card { background: #0d1117; border: 1px solid #30363d; border-radius: 10px; padding: 16px; }
+.trade-card.pump-trade { border-top: 3px solid #238636; }
+.trade-card.dump-trade { border-top: 3px solid #da3633; }
+.trade-card.bad-rr { border: 2px solid #f85149; opacity: 0.6; }
+.trade-card.smart-signal { border: 2px solid #FFD700; box-shadow: 0 0 15px rgba(255, 215, 0, 0.3); }
+.trade-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+.trade-coin { font-size: 22px; font-weight: bold; color: #f0f6fc; }
+.trade-score { font-size: 28px; font-weight: bold; }
+.trade-score.pump { color: #3fb950; }
+.trade-score.dump { color: #f85149; }
+.trade-direction { padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 12px; }
+.trade-direction.long { background: rgba(35, 134, 54, 0.2); color: #3fb950; border: 1px solid #238636; }
+.trade-direction.short { background: rgba(218, 54, 51, 0.2); color: #f85149; border: 1px solid #da3633; }
+.trade-details { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.trade-detail { background: #161b22; padding: 10px; border-radius: 6px; }
+.trade-detail .td-label { color: #8b949e; font-size: 11px; margin-bottom: 4px; }
+.trade-detail .td-value { color: #f0f6fc; font-weight: bold; font-size: 16px; }
+.trade-detail.entry { border-left: 3px solid #58a6ff; }
+.trade-detail.stop { border-left: 3px solid #da3633; }
+.trade-detail.tp1 { border-left: 3px solid #238636; }
+.trade-detail.tp2 { border-left: 3px solid #58a6ff; }
+.trade-detail.tp3 { border-left: 3px solid #d29922; }
+.trade-detail.rr { border-left: 3px solid #bc8cff; }
+.trade-detail.rr.bad { border-left: 3px solid #f85149; }
+.trade-reason { background: #161b22; padding: 10px; border-radius: 6px; font-size: 12px; line-height: 1.5; border-left: 3px solid #58a6ff; }
+.trade-reason strong { color: #f0f6fc; }
+.trade-chart { margin-top: 12px; padding: 8px; background: #0d1117; border-radius: 8px; border: 1px solid #30363d; }
+.trade-chart-title { font-size: 10px; color: #8b949e; margin-bottom: 6px; text-transform: uppercase; font-weight: bold; }
+.liq-warning-box { background: rgba(247, 129, 102, 0.08); padding: 10px; border-radius: 6px; margin-top: 10px; border-left: 3px solid #f78166; font-size: 12px; }
+.liq-warning-box strong { color: #f78166; }
+.triple-list { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+@media (max-width: 1100px) { .triple-list { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 700px) { .triple-list { grid-template-columns: 1fr; } }
+.list-section { background: #161b22; border-radius: 10px; padding: 16px; border: 1px solid #30363d; }
+.list-section.pump-section { border-top: 3px solid #238636; }
+.list-section.dump-section { border-top: 3px solid #da3633; }
+.list-section.volume-section { border-top: 3px solid #d29922; }
+.section-title { font-size: 16px; font-weight: bold; margin-bottom: 12px; }
+.section-title.pump-title { color: #3fb950; }
+.section-title.dump-title { color: #f85149; }
+.section-title.volume-title { color: #d29922; }
+.coin-list { display: grid; gap: 10px; max-height: 600px; overflow-y: auto; }
+.empty-list { text-align: center; padding: 30px; color: #8b949e; }
+.signal-card { background: #0d1117; border: 1px solid #30363d; border-radius: 10px; padding: 14px; }
+.signal-card.pump-card { border-top: 3px solid #238636; }
+.signal-card.dump-card { border-top: 3px solid #da3633; }
+.signal-card.smart-pattern-card { border: 2px solid #FFD700; box-shadow: 0 0 15px rgba(255, 215, 0, 0.3); }
+.signal-card.blocked-card { border: 2px solid #f85149; opacity: 0.5; }
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px; }
+.coin-symbol { font-size: 18px; font-weight: bold; color: #f0f6fc; }
+.direction-badge { padding: 3px 10px; border-radius: 12px; font-weight: bold; font-size: 11px; }
+.direction-badge.long { background: rgba(35, 134, 54, 0.2); color: #3fb950; border: 1px solid #238636; }
+.direction-badge.short { background: rgba(218, 54, 51, 0.2); color: #f85149; border: 1px solid #da3633; }
+.score-display { font-size: 24px; font-weight: bold; color: #3fb950; }
+.score-display.dump-score { color: #f85149; }
+.checklist { margin: 10px 0; }
+.check-item { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #161b22; font-size: 12px; }
+.check-item:last-child { border-bottom: none; }
+.check-icon { margin-right: 6px; }
+.check-icon.pass { color: #3fb950; }
+.check-icon.warn { color: #d29922; }
+.check-icon.fail { color: #f85149; }
+.footer-info { padding: 8px 0; font-size: 11px; color: #8b949e; display: flex; flex-wrap: wrap; gap: 10px; }
+.footer-info .val { color: #c9d1d9; font-weight: bold; }
+.footer-info .val.green { color: #3fb950; }
+.footer-info .val.red { color: #f85149; }
+.volume-card { background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 10px 12px; border-left: 3px solid #d29922; }
+.vol-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px; }
+.vol-coin { display: flex; align-items: center; gap: 6px; }
+.vol-rank { background: #30363d; color: #c9d1d9; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 11px; }
+.vol-rank.top1 { background: linear-gradient(135deg, #d29922, #e3b341); color: #0d1117; }
+.vol-rank.top2 { background: linear-gradient(135deg, #8b949e, #c9d1d9); color: #0d1117; }
+.vol-rank.top3 { background: linear-gradient(135deg, #a0522d, #cd853f); color: #fff; }
+.vol-name { font-size: 15px; font-weight: bold; color: #f0f6fc; }
+.vol-mult-value { font-size: 22px; font-weight: bold; }
+.vol-mult-value.up { color: #3fb950; }
+.vol-mult-value.down { color: #f85149; }
+.vol-mult-label { font-size: 9px; color: #8b949e; text-transform: uppercase; }
+.vol-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; font-size: 11px; }
+.vol-stat { background: #161b22; padding: 5px 6px; border-radius: 4px; }
+.vol-stat .vs-label { color: #8b949e; font-size: 9px; }
+.vol-stat .vs-value { color: #f0f6fc; font-weight: bold; font-size: 12px; }
+.vol-bar { height: 6px; background: #21262d; border-radius: 3px; overflow: hidden; margin-bottom: 6px; }
+.vol-bar-fill { height: 100%; border-radius: 3px; }
+.vol-bar-fill.up { background: linear-gradient(90deg, #238636, #3fb950); }
+.vol-bar-fill.down { background: linear-gradient(90deg, #da3633, #f85149); }
+.vol-comment { font-size: 11px; color: #c9d1d9; padding: 6px 8px; background: #161b22; border-radius: 4px; border-left: 2px solid #d29922; }
+.vol-comment.bullish-comment { border-left-color: #238636; }
+.vol-comment.bearish-comment { border-left-color: #da3633; }
+.adv-section { padding: 8px 0; border-top: 1px dashed #30363d; margin-top: 8px; }
+.adv-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.adv-title { font-size: 11px; font-weight: bold; color: #58a6ff; }
+.adv-grade { padding: 2px 10px; border-radius: 10px; font-size: 10px; font-weight: bold; }
+.adv-grade.elite { background: rgba(188,140,255,0.2); color: #bc8cff; border: 1px solid #bc8cff; }
+.adv-grade.strong { background: rgba(63,185,80,0.2); color: #3fb950; border: 1px solid #238636; }
+.adv-grade.mid { background: rgba(210,153,34,0.2); color: #d29922; border: 1px solid #d29922; }
+.adv-grade.weak { background: rgba(248,81,73,0.2); color: #f85149; border: 1px solid #da3633; }
+.adv-bar { height: 5px; background: #21262d; border-radius: 3px; overflow: hidden; margin-bottom: 8px; }
+.adv-bar-fill { height: 100%; border-radius: 3px; }
+.warnings { margin-top: 8px; }
+.warning-item { padding: 5px 8px; margin-bottom: 4px; border-radius: 6px; font-size: 11px; }
+.warning-item.danger { background: rgba(218, 54, 51, 0.1); border-left: 3px solid #da3633; color: #f85149; }
+.warning-item.caution { background: rgba(210, 153, 34, 0.1); border-left: 3px solid #d29922; color: #d29922; }
+.warning-item.opportunity { background: rgba(63, 185, 80, 0.1); border-left: 3px solid #3fb950; color: #3fb950; font-weight: bold; }
+.reason-section { padding: 8px 0; border-top: 1px solid #21262d; margin-top: 8px; }
+.reason-title { font-size: 11px; font-weight: bold; color: #8b949e; margin-bottom: 4px; }
+.reason-text { font-size: 12px; color: #c9d1d9; line-height: 1.5; }
+.progress-bar { width: 100%; height: 4px; background: #21262d; border-radius: 2px; margin: 10px 0; overflow: hidden; display: none; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #58a6ff, #3fb950); transition: width 0.3s; }
+.exchange-badge { font-size: 9px; padding: 2px 6px; border-radius: 3px; font-weight: bold; }
+.badge-binance { background: #FCD535; color: #1E2329; }
+.badge-bybit { background: #F7A600; color: #000; }
+.badge-both { background: linear-gradient(90deg, #FCD535 50%, #F7A600 50%); color: #1E2329; }
+.rr-warning { background: rgba(248, 81, 73, 0.15); border: 1px solid #f85149; border-radius: 6px; padding: 8px 12px; margin-top: 10px; font-size: 12px; color: #f85149; font-weight: bold; }
+.smart-pattern-badge { background: linear-gradient(135deg, #FFD700, #FFA500); color: #000; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; display: inline-block; margin-left: 8px; }
+.blocked-badge { background: linear-gradient(135deg, #f85149, #da3633); color: #fff; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; display: inline-block; margin-left: 8px; }
+.pattern-detail { background: linear-gradient(135deg, rgba(255,215,0,0.1), rgba(188,140,255,0.1)); border: 1px solid #FFD700; border-radius: 6px; padding: 8px 12px; margin-top: 8px; font-size: 12px; color: #FFD700; }
+.smart-section-header { background: linear-gradient(135deg, rgba(255,215,0,0.15), rgba(188,140,255,0.15)); border: 1px solid #FFD700; border-radius: 8px; padding: 12px; margin-bottom: 10px; }
+.smart-section-header strong { color: #FFD700; font-size: 13px; }
+.signal-chart { margin-top: 10px; padding: 8px; background: #0d1117; border-radius: 8px; border: 1px solid #30363d; }
+.signal-chart-title { font-size: 10px; color: #8b949e; margin-bottom: 6px; text-transform: uppercase; font-weight: bold; }
+.news-panel { background: #161b22; border: 2px solid #f78166; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+.news-list { display: grid; gap: 10px; max-height: 350px; overflow-y: auto; }
+.news-card { background: #0d1117; border-radius: 8px; padding: 12px; border-left: 4px solid #8b949e; display: flex; flex-direction: column; gap: 6px; transition: all 0.3s; }
+.news-card:hover { transform: translateX(4px); }
+.news-card.pump { border-left-color: #3fb950; background: rgba(63, 185, 80, 0.05); }
+.news-card.dump { border-left-color: #f85149; background: rgba(248, 81, 73, 0.05); }
+.news-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; }
+.news-coin { background: #30363d; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; color: #c9d1d9; }
+.news-impact { font-size: 11px; font-weight: bold; padding: 2px 8px; border-radius: 4px; }
+.news-impact.pump { background: rgba(63, 185, 80, 0.2); color: #3fb950; }
+.news-impact.dump { background: rgba(248, 81, 73, 0.2); color: #f85149; }
+.news-title { font-size: 13px; color: #c9d1d9; line-height: 1.4; }
+.news-time { font-size: 10px; color: #8b949e; }
+.news-link { color: #58a6ff; text-decoration: none; font-size: 11px; }
+.news-link:hover { text-decoration: underline; }
+.news-status { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 8px; }
+.news-status.active { background: rgba(63,185,80,0.2); color: #3fb950; }
+.news-status.error { background: rgba(248,81,73,0.2); color: #f85149; }
+.news-status.loading { background: rgba(210,153,34,0.2); color: #d29922; }
+.news-ai-reason { font-size: 10px; color: #bc8cff; margin-top: 4px; font-style: italic; }
+.liq-commentary { background: linear-gradient(135deg, #0d1117 0%, #161b22 100%); border: 2px solid #bc8cff; border-radius: 12px; padding: 18px; margin-top: 15px; }
+.liq-commentary h3 { color: #bc8cff; font-size: 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.liq-commentary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; margin-bottom: 15px; }
+.liq-coin-comment { background: #0d1117; border-radius: 8px; padding: 10px; border-left: 4px solid #30363d; font-size: 12px; line-height: 1.5; }
+.liq-coin-comment.danger { border-left-color: #f85149; background: rgba(248, 81, 73, 0.05); }
+.liq-coin-comment.warning { border-left-color: #d29922; background: rgba(210, 153, 34, 0.05); }
+.liq-coin-comment.opportunity { border-left-color: #3fb950; background: rgba(63, 185, 80, 0.05); }
+.liq-coin-comment .cc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 4px; }
+.liq-coin-comment .cc-coin { font-weight: bold; color: #f0f6fc; font-size: 13px; }
+.liq-coin-comment .cc-risk { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+.liq-coin-comment .cc-risk.critical { background: rgba(248, 81, 73, 0.25); color: #f85149; }
+.liq-coin-comment .cc-risk.high { background: rgba(210, 153, 34, 0.2); color: #d29922; }
+.liq-coin-comment .cc-risk.medium { background: rgba(88, 166, 255, 0.2); color: #58a6ff; }
+.liq-coin-comment .cc-risk.low { background: rgba(63, 185, 80, 0.2); color: #3fb950; }
+.liq-coin-comment .cc-field { margin-bottom: 4px; }
+.liq-coin-comment .cc-field-label { color: #8b949e; font-size: 10px; text-transform: uppercase; }
+.liq-coin-comment .cc-field-value { color: #c9d1d9; }
+.liq-coin-comment .cc-field-value.bearish { color: #f85149; font-weight: bold; }
+.liq-coin-comment .cc-field-value.bullish { color: #3fb950; font-weight: bold; }
+.liq-summary { margin-top: 15px; padding: 12px; background: rgba(188, 140, 255, 0.08); border: 1px solid #bc8cff; border-radius: 8px; font-size: 13px; line-height: 1.6; }
+.liq-summary strong { color: #bc8cff; }
+.liq-summary .summary-direction { font-weight: bold; font-size: 14px; }
+.liq-summary .summary-direction.bearish { color: #f85149; }
+.liq-summary .summary-direction.bullish { color: #3fb950; }
+.liq-strategy-table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 12px; }
+.liq-strategy-table th { background: rgba(188, 140, 255, 0.15); color: #bc8cff; padding: 8px; text-align: left; border: 1px solid #30363d; }
+.liq-strategy-table td { padding: 8px; border: 1px solid #30363d; color: #c9d1d9; }
+.liq-risk-list { list-style: none; padding: 0; margin: 10px 0; }
+.liq-risk-list li { padding: 6px 10px; margin-bottom: 6px; background: rgba(13, 17, 23, 0.5); border-radius: 6px; border-left: 3px solid #d29922; font-size: 12px; line-height: 1.5; }
+.liq-golden-rule { background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 165, 0, 0.1)); border: 1px solid #FFD700; border-radius: 8px; padding: 10px 12px; margin-top: 10px; font-size: 12px; color: #FFD700; font-weight: bold; }
+/* TELEGRAM PANEL STİLLERİ */
+.telegram-panel { background: #161b22; border: 2px solid #2ea043; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+.telegram-panel h2 { color: #3fb950; font-size: 20px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
+.telegram-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 15px; }
+.telegram-input-group { display: flex; flex-direction: column; gap: 6px; }
+.telegram-input-group label { color: #8b949e; font-size: 12px; font-weight: bold; }
+.telegram-input-group input, .telegram-input-group select { background: #0d1117; color: #c9d1d9; border: 1px solid #30363d; padding: 8px 12px; border-radius: 6px; font-size: 13px; }
+.telegram-buttons { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.telegram-status { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; margin-left: 10px; }
+.telegram-status.ready { background: rgba(63,185,80,0.2); color: #3fb950; border: 1px solid #238636; }
+.telegram-status.error { background: rgba(248,81,73,0.2); color: #f85149; border: 1px solid #da3633; }
+
+/* YÖNETİCİ PANELİ STİLLERİ */
+.admin-panel { background: #161b22; border: 2px solid #1f6feb; border-radius: 12px; padding: 20px; margin-bottom: 20px; display: none; }
+.admin-panel h2 { color: #58a6ff; font-size: 20px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
+.admin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 15px; }
+.admin-input-group { display: flex; flex-direction: column; gap: 6px; }
+.admin-input-group label { color: #8b949e; font-size: 12px; font-weight: bold; }
+.admin-input-group input { background: #0d1117; color: #c9d1d9; border: 1px solid #30363d; padding: 8px 12px; border-radius: 6px; font-size: 13px; }
+.admin-users-table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
+.admin-users-table th { background: rgba(31, 111, 235, 0.15); color: #58a6ff; padding: 8px; text-align: left; border: 1px solid #30363d; }
+.admin-users-table td { padding: 8px; border: 1px solid #30363d; color: #c9d1d9; }
+</style>
+</head>
+<body>
+<!-- Giriş Ekranı Konteyneri -->
+<div id="authOverlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:#0d1117; display:flex; justify-content:center; align-items:center; z-index:99999;">
+    <div style="background:#161b22; border:1px solid #30363d; border-radius:12px; width:400px; padding:30px; box-shadow:0 8px 24px rgba(0,0,0,0.5); text-align:center; font-family:sans-serif; color:#c9d1d9;">
+        <div style="font-size:24px; font-weight:bold; color:#58a6ff; margin-bottom:5px;">⚡ ZEUS TRADE BOT</div>
+        <div style="font-size:12px; color:#8b949e; margin-bottom:25px;">Profesyonel Kripto Sinyal Sistemi</div>
+        
+        <!-- Sekmeler -->
+        <div style="display:flex; background:#0d1117; border-radius:6px; padding:4px; margin-bottom:20px; border:1px solid #30363d;">
+            <button id="loginTabBtn" onclick="switchAuthTab('login')" style="flex:1; background:#21262d; color:white; border:none; padding:8px; border-radius:4px; font-weight:bold; cursor:pointer; font-size:12px;">Üye / Yönetici Girişi</button>
+            <button id="registerTabBtn" onclick="switchAuthTab('register')" style="flex:1; background:transparent; color:#8b949e; border:none; padding:8px; border-radius:4px; font-weight:bold; cursor:pointer; font-size:12px;">Şifre Al / Kayıt Ol</button>
+        </div>
+
+        <!-- Giriş Formu -->
+        <div id="loginForm">
+            <div style="text-align:left; margin-bottom:12px; font-size:12px; color:#8b949e; font-weight:bold;">Kullanıcı Adı:</div>
+            <input type="text" id="loginUser" placeholder="Kullanıcı adınızı girin..." style="width:100%; padding:10px; background:#0d1117; border:1px solid #30363d; border-radius:6px; color:white; margin-bottom:15px; box-sizing:border-box; outline:none;">
+            
+            <div style="text-align:left; margin-bottom:12px; font-size:12px; color:#8b949e; font-weight:bold;">Şifre:</div>
+            <input type="password" id="loginPass" placeholder="Şifrenizi girin..." style="width:100%; padding:10px; background:#0d1117; border:1px solid #30363d; border-radius:6px; color:white; margin-bottom:20px; box-sizing:border-box; outline:none;">
+            
+            <button onclick="handleLogin()" style="width:100%; background:#238636; color:white; border:none; padding:12px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:14px;">Sisteme Giriş Yap 🚀</button>
+        </div>
+
+        <!-- Kayıt Formu (Gizli Başlangıçta) -->
+        <div id="registerForm" style="display:none;">
+            <div style="text-align:left; margin-bottom:12px; font-size:12px; color:#8b949e; font-weight:bold;">Talep Edilen Kullanıcı Adı:</div>
+            <input type="text" id="regUser" placeholder="Kullanıcı adı belirleyin..." style="width:100%; padding:10px; background:#0d1117; border:1px solid #30363d; border-radius:6px; color:white; margin-bottom:15px; box-sizing:border-box; outline:none;">
+            
+            <div style="text-align:left; margin-bottom:12px; font-size:12px; color:#8b949e; font-weight:bold;">Şifreniz:</div>
+            <input type="password" id="regPass" placeholder="Şifre belirleyin..." style="width:100%; padding:10px; background:#0d1117; border:1px solid #30363d; border-radius:6px; color:white; margin-bottom:20px; box-sizing:border-box; outline:none;">
+            
+            <button onclick="handleRegister()" style="width:100%; background:#1f6feb; color:white; border:none; padding:12px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:14px;">Kayıt Talebi Gönder 📝</button>
+        </div>
+
+        
+    </div>
+</div>
+
+<h1>⚡ ZEUS TRADE BOT v18 <span class="cors-status cors-ok" id="corsStatus">BN + BY + RSI 80 LİMİT</span><span class="liq-badge">FINAL</span></h1>
+<p class="subtitle"><span class="live-indicator"></span>CANLI • RSI 80/20 Sert Limit • Geç Sinyal Engelleme • Haber Analizi • Likidite Yorumu • Telegram Sinyal Paneli</p>
+<div class="controls">
+<button id="startBtn" onclick="startBot()">▶️ Botu Başlat</button>
+<button id="stopBtn" class="stop" onclick="stopBot()" disabled>⏹️ Durdur</button>
+<button onclick="refreshData()" style="background:#1f6feb;">🔄 Manuel Yenile</button>
+<button onclick="fetchAndAnalyzeNews()" style="background:#8b5cf6;">📰 Haberleri Yenile</button>
+<button onclick="clearLearningData()" style="background:#6e40c9;">🧠 Öğrenme Sıfırla</button>
+<button onclick="handleLogout()" style="background:#da3633;">🚪 Çıkış Yap</button>
+</div>
+
+<!-- YÖNETİCİ PANELİ (Sadece admin girince görünür) -->
+<div class="admin-panel" id="adminPanel"> <h2>🛠️ YÖNETİCİ & ÜYE PANELİ</h2>
+
+<!-- BEKLEYEN KAYIT TALEPLERİ BÖLÜMÜ (EKLENDİ) -->
+<div style="margin-bottom:20px; background:#0d1117; padding:12px; border-radius:8px; border:1px solid #30363d;">
+<div style="font-size:13px; font-weight:bold; color:#f78166; margin-bottom:8px;">⏳ Onay Bekleyen Kayıt İstekleri:</div>
+<table class="admin-users-table">
+<thead>
+<tr>
+<th>Kullanıcı Adı</th>
+<th>Şifre</th>
+<th>İşlemler</th>
+</tr>
+</thead>
+<tbody id="adminPendingListBody">
+<!-- Dinamik dolacak -->
+</tbody>
+</table>
+</div>
+
+<div class="admin-grid">
+<div class="admin-input-group">
+<label>👤 Yeni Üye Kullanıcı Adı:</label>
+<input type="text" id="newMemberUser" placeholder="Örn: ahmet123">
+</div>
+<div class="admin-input-group">
+<label>🔑 Yeni Üye Şifresi:</label>
+<input type="text" id="newMemberPass" placeholder="Örn: sifre123">
+</div>
+</div>
+<div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+<button onclick="addNewMember()" style="background:#1f6feb;">➕ Üye Ekle / Tanımla</button>
+</div>
+<div style="margin-top:15px;">
+<div style="font-size:13px; font-weight:bold; color:#58a6ff; margin-bottom:8px;">📋 Kayıtlı Üye Listesi:</div>
+<table class="admin-users-table">
+<thead>
+<tr>
+<th>Kullanıcı Adı</th>
+<th>Şifre</th>
+<th>Kayıt Türü</th>
+<th>İşlem</th>
+</tr>
+</thead>
+<tbody id="adminUserListBody">
+<!-- Dinamik dolacak -->
+</tbody>
+</table>
+</div>
+</div>
+
+<!-- TELEGRAM SİNYAL PANELİ -->
+<div class="telegram-panel" id="telegramPanel">
+<h2>
+📢 TELEGRAM SİNYAL KONTROL PANELİ 
+<span class="telegram-status ready" id="tgStatus">Hazır</span>
+</h2>
+<div class="telegram-grid">
+<div class="telegram-input-group">
+<label>🤖 Bot Token:</label>
+<input type="text" id="tgBotToken" placeholder="Örn: 123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ">
+</div>
+<div class="telegram-input-group">
+<label>💬 Chat ID / Kanal:</label>
+<input type="text" id="tgChatId" placeholder="Örn: @borsadaskanal veya -100xxxx">
+</div>
+<div class="telegram-input-group">
+<label>⚙️ Otomatik Gönderim:</label>
+<select id="tgAutoSend">
+<option value="disabled">Devre Dışı (Manuel)</option>
+<option value="enabled" selected>Yalnızca Güçlü Sinyaller (Elit/≥80)</option>
+<option value="score50">50 ve Üstü Puana Sahip Sinyaller (≥50)</option>
+<option value="all">Tüm Sinyaller</option>
+</select>
+</div>
+</div>
+<div class="telegram-buttons">
+<button onclick="sendTestTelegramMessage()" style="background:#2ea043;">📤 Test Mesajı Gönder</button>
+<button onclick="saveTelegramSettings()" style="background:#1f6feb;">💾 Ayarları Kaydet</button>
+<span style="font-size: 11px; color: #8b949e; margin-left: 5px;">Bot otomatik olarak tespit edilen sinyalleri Telegram kanalına iletebilir.</span>
+</div>
+</div>
+
+<div class="filter-bar">
+<label>⏱️ Zaman Dilimi:</label>
+<select id="timeframe">
+<option value="5m" selected>5 Dakika</option>
+<option value="15m">15 Dakika</option>
+<option value="1h">1 Saat</option>
+<option value="4h">4 Saat</option>
+</select>
+<label>📊 Min Hacim (M$):</label>
+<input type="number" id="minVol" value="1" min="0.1" step="0.1" style="width:60px">
+<label>📈 Gösterilecek:</label>
+<select id="topN">
+<option value="10">10</option>
+<option value="15" selected>15</option>
+<option value="20">20</option>
+</select>
+<label>🚀 Onay Filtresi:</label>
+<select id="advFilter">
+<option value="0">Tümü</option>
+<option value="45">≥45</option>
+<option value="65">≥65</option>
+<option value="80" selected>≥80 (Elit)</option>
+</select>
+</div>
+<div class="stats">
+<div class="stat-box"><div class="label">Toplam Coin</div><div class="value" id="statTotal">0</div></div>
+<div class="stat-box"><div class="label">Taranan</div><div class="value" id="statScanned">0</div></div>
+<div class="stat-box"><div class="label">Pump</div><div class="value" id="statPump" style="color:#3fb950">0</div></div>
+<div class="stat-box"><div class="label">Dump</div><div class="value" id="statDump" style="color:#f85149">0</div></div>
+<div class="stat-box"><div class="label">Engellenen</div><div class="value" id="statBlocked" style="color:#f85149">0</div></div>
+<div class="stat-box"><div class="label">Likidite Bölge</div><div class="value" id="statLiqZones" style="color:#f78166">0</div></div>
+<div class="stat-box"><div class="label">🧠 AI Seviye</div><div class="value" id="statAILevel" style="color:#bc8cff">0</div></div>
+<div class="stat-box"><div class="label">🦇 Harmonik</div><div class="value" id="statHarmonic" style="color:#FFD700">0</div></div>
+<div class="stat-box"><div class="label">Durum</div><div class="value" id="statStatus">⏸️</div></div>
+</div>
+<div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+<div class="news-panel" id="newsPanel">
+<h2 style="color: #f78166; font-size: 20px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+ANLIK HABER SİNYALLERİ (NEWS PUMP/DUMP)
+<span class="news-status loading" id="newsStatus">Yükleniyor...</span>
+</h2>
+<div class="news-list" id="newsList">
+<div class="insight-item neutral">📡 Haber akışı dinleniyor, analiz bekleniyor...</div>
+</div>
+</div>
+
+<div class="liquidity-map" id="liquidityMap">
+<h2>🌊 LİKİDİTE HARİTASI <span class="brain-badge" id="liqBrainLevel">Seviye 0</span></h2>
+<div class="ls-ratio-display" id="lsRatioDisplay"></div>
+<div class="liquidity-grid">
+<div class="liq-zone-card long-pool">
+<div class="liq-zone-title long">🟢 LONG LİKİDİTE HAVUZLARI</div>
+<div class="liq-zones-list" id="longPools"><div class="insight-item neutral">Veri bekleniyor...</div></div>
+</div>
+<div class="liq-zone-card short-pool">
+<div class="liq-zone-title short">🔴 SHORT LİKİDİTE HAVUZLARI</div>
+<div class="liq-zones-list" id="shortPools"><div class="insight-item neutral">Veri bekleniyor...</div></div>
+</div>
+</div>
+<div class="liquidity-alert" id="liquidityAlerts">
+<h4>🚨 EN GÜÇLÜ 15 LİKİDİTE UYARISI</h4>
+<div id="liquidityAlertContent"><div class="insight-item neutral">Analiz ediliyor...</div></div>
+</div>
+<div class="liq-commentary" id="liqCommentary">
+<h3>🪙 COİN BAZLI ANALİZ <span class="brain-badge" id="commentaryLevel">Aktif</span></h3>
+<div id="liqCommentaryContent"><div class="insight-item neutral">Yorum için veri bekleniyor...</div></div>
+</div>
+</div>
+
+<!-- AI ÖĞRENME PANELİ -->
+<div class="ai-panel">
+<h2>🧠 AI ÖĞRENME PANELİ <span class="brain-badge" id="brainLevel">Seviye 0</span></h2>
+<div class="ai-stats-grid">
+<div class="ai-stat-card">
+<div class="card-title">Performans</div>
+<div class="card-value" id="aiPerfRatio">0 / 1</div>
+<div style="font-size:11px; color:#8b949e; margin-top:4px;">Sinyal</div>
+<div style="font-size:11px; color:#3fb950; margin-top:8px;" id="aiWinRateText">Kazanma: 0.0%</div>
+</div>
+<div class="ai-stat-card" style="border-top:3px solid #3fb950;">
+<div class="card-title">✅ Başarılı</div>
+<div class="card-value" style="color:#3fb950;" id="aiWinsCount">0</div>
+<div style="font-size:11px; color:#8b949e; margin-top:4px;" id="aiWinsAvg">Ort: -</div>
+</div>
+<div class="ai-stat-card" style="border-top:3px solid #da3633;">
+<div class="card-title">Başarısız</div>
+<div class="card-value" style="color:#da3633;" id="aiLossCount">0</div>
+<div style="font-size:11px; color:#8b949e; margin-top:4px;" id="aiLossAvg">Ort: -</div>
+</div>
+<div class="ai-stat-card" style="border-top:3px solid #d29922;">
+<div class="card-title">💰 Net K/Z</div>
+<div class="card-value" style="color:#3fb950;" id="aiNetPnl">+0.00%</div>
+<div style="font-size:11px; color:#8b949e; margin-top:4px;" id="aiPnlDetails">0W / 0L / 1 bekleyen</div>
+</div>
+</div>
+
+<h3>📊 Gösterge Performansı:</h3>
+<div id="indicatorPerformance"><div class="insight-item neutral">Henüz veri yok</div></div>
+<h3>🎯 Strateji Performansı:</h3>
+<div id="strategyPerformance"></div>
+<h3>💡 AI Öğrenilenler:</h3>
+<div id="aiStrategyOutput"><div class="insight-item neutral">En az 3 sonuçlanan sinyal gerekli.</div></div>
+</div>
+
+<div class="trade-recommendations" id="tradeRecommendations" style="display:none;">
+<h2>🏆 EN İYİ İŞLEM TAVSİYELERİ</h2>
+<div class="trade-cards" id="tradeCards"></div>
+</div>
+
+<div class="triple-list">
+<div class="list-section pump-section">
+<div class="section-title pump-title">🟢 PUMP (LONG)</div>
+<div class="coin-list" id="pumpList"><div class="empty-list">Veri bekleniyor...</div></div>
+</div>
+<div class="list-section dump-section">
+<div class="section-title dump-title">🔴 DUMP (SHORT)</div>
+<div class="coin-list" id="dumpList"><div class="empty-list">Veri bekleniyor...</div></div>
+</div>
+<div class="list-section volume-section">
+<div class="section-title volume-title">📊 HACİM ANOMALİ</div>
+<div class="coin-list" id="volumeList"><div class="empty-list">Veri bekleniyor...</div></div>
+</div>
+</div>
+
+<div class="disclaimer">⚠️ Yatırım tavsiyesi değildir. Futures işlemleri yüksek risk içerir. Veriler Binance ve Bybit'ten ortaklaşa alınır.</div>
+<div class="log" id="log">
+<div class="log-entry"><span class="time">[Sistem]</span> Zeus Trade Bot v17.9 yüklendi. Tüm özellikler aktif.</div>
+</div>
+
+<script>
+// Üye Veritabanı ve Yönetim Fonksiyonları
+let appUsers = [
+    { user: 'Zeus78', pass: 'Kanguru35iptas.!', role: 'admin' }
+];
+
+function loadUsers() {
+    try {
+        const saved = localStorage.getItem('zeusBotUsers');
+        if (saved) {
+            appUsers = JSON.parse(saved);
+        } else {
+            saveUsers();
+        }
+    } catch(e) {}
+}
+
+function saveUsers() {
+    try {
+        localStorage.setItem('zeusBotUsers', JSON.stringify(appUsers));
+    } catch(e) {}
+}
+
+function switchAuthTab(tab) {
+    const loginBtn = document.getElementById('loginTabBtn');
+    const regBtn = document.getElementById('registerTabBtn');
+    const loginForm = document.getElementById('loginForm');
+    const regForm = document.getElementById('registerForm');
+    
+    if(tab === 'login') {
+        loginBtn.style.background = '#21262d';
+        loginBtn.style.color = 'white';
+        regBtn.style.background = 'transparent';
+        regBtn.style.color = '#8b949e';
+        loginForm.style.display = 'block';
+        regForm.style.display = 'none';
+    } else {
+        regBtn.style.background = '#21262d';
+        regBtn.style.color = 'white';
+        loginBtn.style.background = 'transparent';
+        loginBtn.style.color = '#8b949e';
+        regForm.style.display = 'block';
+        loginForm.style.display = 'none';
+    }
+}
+
+function handleLogin() {
+    loadUsers();
+    const user = document.getElementById('loginUser').value.trim();
+    const pass = document.getElementById('loginPass').value.trim();
+    
+    const found = appUsers.find(u => u.user === user && u.pass === pass);
+    if(found) {
+        document.getElementById('authOverlay').style.display = 'none';
+        if(found.role === 'admin') {
+            document.getElementById('adminPanel').style.display = 'block';
+            renderAdminUserList();
+            renderAdminPendingList(); // <-- BURAYI EKLE: Admin girer girmez bekleyenleri listeler
+        } else {
+            document.getElementById('adminPanel').style.display = 'none';
+        }
+        log(`👤 Kullanıcı girişi başarılı: ${user} (${found.role})`, 'success');
+    } else {
+        alert('Hatalı kullanıcı adı veya şifre!');
+    }
+}
+
+function handleRegister() {
+    loadUsers();
+    const user = document.getElementById('regUser').value.trim();
+    const pass = document.getElementById('regPass').value.trim();
+
+    if(!user || !pass) {
+    alert('Lütfen kullanıcı adı ve şifre girin!');
+    return;
+}
+
+    if(appUsers.some(u => u.user === user)) {
+        alert('Bu kullanıcı adı zaten alınmış!');
+        return;
+    }
+
+    // Bekleyenler listesine ekleme kısmı
+    let pendingUsers = JSON.parse(localStorage.getItem('zeusPendingRequests')) || [];
+    
+    if (pendingUsers.some(u => u.user === user)) {
+        alert('Bu kullanıcı adı için zaten bekleyen bir onay talebi var!');
+        return;
+    }
+
+    pendingUsers.push({ user: user, pass: pass, role: 'member' });
+    localStorage.setItem('zeusPendingRequests', JSON.stringify(pendingUsers));
+
+    alert('Kayıt talebiniz alındı! Yönetici onayladıktan sonra giriş yapabilirsiniz.');
+    
+    switchAuthTab('login');
+}
+
+function handleLogout() {
+    document.getElementById('authOverlay').style.display = 'flex';
+    document.getElementById('loginUser').value = '';
+    document.getElementById('loginPass').value = '';
+}
+
+function addNewMember() {
+    const user = document.getElementById('newMemberUser').value.trim();
+    const pass = document.getElementById('newMemberPass').value.trim();
+    
+    if(!user || !pass) {
+        alert('Kullanıcı adı ve şifre boş olamaz!');
+        return;
+    }
+    
+    if(appUsers.some(u => u.user === user)) {
+        alert('Bu kullanıcı adı sistemde zaten var!');
+        return;
+    }
+    
+    appUsers.push({ user: user, pass: pass, role: 'member' });
+    saveUsers();
+    renderAdminUserList();
+    document.getElementById('newMemberUser').value = '';
+    document.getElementById('newMemberPass').value = '';
+    alert(`"${user}" üyesi başarıyla eklendi!`);
+}
+
+function deleteMember(username) {
+    if(username === 'admin') {
+        alert('Admin kullanıcısı silinemez!');
+        return;
+    }
+    if(confirm(`"${username}" kullanıcısını silmek istediğinize emin misiniz?`)) {
+        appUsers = appUsers.filter(u => u.user !== username);
+        saveUsers();
+        renderAdminUserList();
+    }
+}
+
+function renderAdminUserList() {
+    const tbody = document.getElementById('adminUserListBody');
+    if(!tbody) return;
+    
+    tbody.innerHTML = appUsers.map(u => `
+        <tr>
+            <td><b>${u.user}</b></td>
+            <td><code>${u.pass}</code></td>
+            <td><span style="padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold; background:${u.role === 'admin' ? 'rgba(31,111,235,0.2); color:#58a6ff;' : 'rgba(63,185,80,0.2); color:#3fb950;'}">${u.role.toUpperCase()}</span></td>
+            <td>${u.role !== 'admin' ? `<button onclick="deleteMember('${u.user}')" style="background:#da3633; padding:4px 10px; font-size:11px;">Sil</button>` : '-'}</td>
+        </tr>
+    `).join('');
+}
+
+const CONFIG = {
+refreshInterval: 20000,
+checkInterval: 30000,
+apiBinanceFutures: 'https://fapi.binance.com',
+apiBybit: 'https://api.bybit.com',
+MIN_SCORE: 50,
+MIN_VOL_MULT: 1.2,
+BATCH_SIZE: 8,
+BATCH_DELAY: 200,
+AUTO_TUNE_INTERVAL: 5,
+LIQ_COIN_COUNT: 15,
+MAX_PRICE_MOVE_BEFORE_SIGNAL: 5.0,
+MIN_RR_RATIO: 1.0,
+DUPLICATE_WINDOW: 600000,
+PATTERN_LOOKBACK: 50,
+RSI_OVERBOUGHT_LIMIT: 80,
+RSI_OVERSOLD_LIMIT: 20,
+BLOCK_LATE_SIGNALS: true
+};
+const TF_MAP = { '5m': '5m', '15m': '15m', '1h': '1h', '4h': '4h' };
+function getBybitInterval(tf) {
+const map = { '5m': '5', '15m': '15', '1h': '60', '4h': '240' };
+return map[tf] || '5';
+}
+let botInterval = null, checkInterval = null, coinData = [], logEntries = [], isScanning = false;
+let liquidityData = { longPools: [], shortPools: [], lsRatios: {}, alerts: [] };
+let harmonicCount = 0;
+let blockedCount = 0;
+let learningData = {
+signals: [], indicatorPerformance: {},
+strategyPerformance: { scalping: {wins:0, losses:0, avgPnl:0}, swing: {wins:0, losses:0, avgPnl:0}, breakout: {wins:0, losses:0, avgPnl:0}, liquidity: {wins:0, losses:0, avgPnl:0}, harmonic: {wins:0, losses:0, avgPnl:0} },
+dynamicWeights: { MACD: 1.0, RSI: 1.5, Bollinger: 1.0, Volume: 1.0, Pattern: 1.0, ADX: 1.5, EMA: 1.0, Momentum: 1.0, Liquidity: 1.0, Harmonic: 2.0, PineScript: 1.5 },
+autoTunedParams: { tp1Mult: 1.5, tp2Mult: 2.5, tp3Mult: 4.0, slMult: 7.0, strategy: 'scalping', breakoutBanned: true },
+lastAutoTune: 0
+};
+let newsInterval = null;
+let processedNewsIds = new Set();
+let newsBoosts = {};
+let newsFetchCount = 0;
+let newsErrorCount = 0;
+
+let telegramSettings = { botToken: '', chatId: '', autoSend: 'enabled' };
+function loadTelegramSettings() {
+try {
+const saved = localStorage.getItem('zeusTelegramSettings');
+if (saved) {
+telegramSettings = JSON.parse(saved);
+document.getElementById('tgBotToken').value = telegramSettings.botToken || '';
+document.getElementById('tgChatId').value = telegramSettings.chatId || '';
+document.getElementById('tgAutoSend').value = telegramSettings.autoSend || 'enabled';
+}
+} catch(e) {}
+}
+function saveTelegramSettings() {
+telegramSettings.botToken = document.getElementById('tgBotToken').value.trim();
+telegramSettings.chatId = document.getElementById('tgChatId').value.trim();
+telegramSettings.autoSend = document.getElementById('tgAutoSend').value;
+try {
+localStorage.setItem('zeusTelegramSettings', JSON.stringify(telegramSettings));
+log('📢 Telegram ayarları başarıyla kaydedildi.', 'success');
+alert('Telegram ayarları kaydedildi!');
+} catch(e) {
+log('❌ Telegram ayarları kaydedilemedi.', 'error');
+}
+}
+async function sendTelegramMessage(messageText) {
+if (!telegramSettings.botToken || !telegramSettings.chatId) {
+log('⚠️ Telegram Bot Token veya Chat ID eksik!', 'warn');
+return false;
+}
+try {
+const url = `https://api.telegram.org/bot${telegramSettings.botToken}/sendMessage`;
+const response = await fetch(url, {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify({
+chat_id: telegramSettings.chatId,
+text: messageText,
+parse_mode: 'Markdown'
+})
+});
+const data = await response.json();
+if (data.ok) {
+log('📢 Telegram mesajı başarıyla gönderildi.', 'success');
+return true;
+} else {
+log(`❌ Telegram API Hatası: ${data.description}`, 'error');
+return false;
+}
+} catch(e) {
+log(`❌ Telegram gönderim hatası: ${e.message}`, 'error');
+return false;
+}
+}
+async function sendTestTelegramMessage() {
+telegramSettings.botToken = document.getElementById('tgBotToken').value.trim();
+telegramSettings.chatId = document.getElementById('tgChatId').value.trim();
+if (!telegramSettings.botToken || !telegramSettings.chatId) {
+alert('Lütfen önce Bot Token ve Chat ID girin!');
+return;
+}
+const testMsg = `⚡ *ZEUS TRADE BOT v17.9* \n\n✅ Telegram bağlantı testi başarılı! Sinyal paneli aktif ve çalışıyor.`;
+const success = await sendTelegramMessage(testMsg);
+if (success) alert('Test mesajı Telegram kanalına gönderildi!');
+else alert('Mesaj gönderilemedi! Token veya Chat ID bilgilerini kontrol edin.');
+}
+
+const NEWS_CONFIG = {
+coinGeckoUrls: [
+'https://api.coingecko.com/api/v3/status_updates?per_page=30&page=1',
+'https://api.coingecko.com/api/v3/status_updates?per_page=30&page=2',
+'https://api.coingecko.com/api/v3/status_updates?per_page=30&page=3'
+],
+binanceNewsUrl: 'https://www.binance.com/bapi/composite/v1/public/cms/article/list/query?type=1&pageNo=1&pageSize=20',
+checkInterval: 30000,
+verbSentiment: {
+'açtı': 2.5, 'başlattı': 2.5, 'onayladı': 3, 'izin verdi': 3, 'kabul etti': 2.5,
+'benimsedi': 2, 'entegre etti': 2, 'listelendi': 2.5, 'yükseldi': 2, 'artırdı': 1.5,
+'genişletti': 2, 'satın aldı': 2, 'yatırım yaptı': 2.5, 'ortak oldu': 2, 'anlaştı': 2,
+'tamamladı': 1.5, 'duyurdu': 1, 'destekledi': 2, 'teşvik etti': 2, 'serbest bıraktı': 2.5,
+'kullanıma açtı': 2.5, 'entegre oldu': 2, 'ortaklık kurdu': 2.5, 'işbirliği yaptı': 2,
+'anlaşma imzaladı': 2.5, 'büyüme': 1.5, 'kâr': 1.5, 'pozitif': 1, 'olumlu': 1,
+'rekor': 2, 'adoption': 2, 'partnership': 2, 'launch': 2, 'listing': 2,
+'approve': 2.5, 'greenlight': 2.5, 'halving': 2, 'bullish': 2, 'surge': 2,
+'rally': 2, 'breakout': 2, 'accumulation': 1.5, 'inflows': 1.5, 'whale': 1,
+'etf': 2, 'upgrade': 1.5, 'mainnet': 1.5,
+'yasakladı': -3, 'kapattı': -2.5, 'durdurdu': -2.5, 'dondurdu': -2.5, 'reddetti': -2,
+'iptal etti': -2, 'geri çekildi': -2, 'çöktü': -3, 'iflas etti': -3, 'hacklendi': -3,
+'çalındı': -3, 'dolandırdı': -3, 'tutuklandı': -2.5, 'mahkum oldu': -2.5, 'ceza verdi': -2,
+'kısıtladı': -2, 'engelledi': -2, 'uyardı': -1.5, 'düşürdü': -1.5, 'azalttı': -1.5,
+'sattı': -1, 'tasfiye etti': -2.5, 'kaybetti': -2, 'exploit': -3,
+'güvenlik açığı': -2, 'soruşturma': -2, 'dava': -1.5, 'yasak': -3,
+'ban': -3, 'crash': -3, 'collapse': -3, 'fraud': -3, 'scam': -3,
+'bankrupt': -3, 'stolen': -3, 'drain': -3, 'seizure': -2.5,
+'arrested': -2.5, 'indicted': -2.5, 'lawsuit': -2, 'delist': -2.5,
+'suspended': -2, 'frozen': -2, 'liquidation': -2, 'dump': -2,
+'plunge': -2, 'fall': -1.5, 'decline': -1.5, 'loss': -1.5,
+'negative': -1.5, 'warning': -1, 'risk': -1, 'selloff': -2,
+'bearish': -2, 'fear': -1.5, 'inflation': -1.5, 'fine': -1.5,
+'investigation': -2, 'shut down': -2.5
+},
+negationWords: ['not', 'no', 'never', 'neither', 'without', 'değil', 'yok', 'asla', 'hiç',
+'olumsuz', 'reddetti', 'yasa dışı', 'önledi', 'engelledi',
+'madı', 'medi', 'mıyor', 'miyor', 'maz', 'mez', 'mayacak', 'meyecek'],
+positiveContextWords: ['despite', 'although', 'however', 'rağmen', 'ama', 'fakat',
+'buna rağmen', 'ancak', 'buna karşın', 'yine de'],
+pumpKeywords: ['bullish', 'partnership', 'launch', 'adoption', 'etf', 'whale',
+'breakout', 'surge', 'rally', 'approve', 'listing', 'halving', 'milestone',
+'accumulation', 'inflows', 'greenlight', 'institutional', 'upgrade', 'mainnet',
+'onay verdi', 'izin verdi', 'yasal', 'resmi', 'başlattı', 'anlaşma',
+'ortaklık', 'entegrasyon', 'listelendi', 'yükseldi', 'rekor', 'kabul',
+'kurumsal', 'yatırım', 'fon', 'destek', 'işbirliği', 'protokol',
+'büyüme', 'kâr', 'pozitif', 'olumlu', 'lisans', 'kabul etti',
+'entegre oldu', 'aktif', 'kullanıma açıldı', 'başarıyla', 'tamamlandı',
+'anlaştı', 'ortak oldu', 'genişletti', 'artırdı', 'serbest bırakıldı'],
+dumpKeywords: ['crash', 'ban', 'hack', 'exploit', 'seizure', 'arrested', 'indicted',
+'lawsuit', 'liquidation cascade', 'delist', 'suspended', 'frozen assets',
+'scam', 'rug pull', 'bankrupt', 'collapse', 'ponzi', 'fraud', 'stolen',
+'drain', 'shut down', 'cease', 'yasak', 'çöküş', 'dolandırıcılık',
+'hırsızlık', 'tutuklandı', 'dava', 'tasfiye', 'kapatıldı', 'durduruldu',
+'donduruldu', 'iflas', 'skandal', 'zarar', 'negatif', 'olumsuz',
+'risk artışı', 'regülasyon baskısı', 'yasakladı', 'soruşturma', 'cezalandırdı',
+'mahkum', 'suçlu', 'kaçak', 'kara para', 'yaptırım', 'ambargo',
+'kısıtlama', 'engel', 'reddedildi', 'iptal', 'geri çekildi', 'çöktü',
+'kayboldu', 'saldırı', 'güvenlik açığı'],
+coinMap: {
+'btc': 'BTCUSDT', 'bitcoin': 'BTCUSDT', 'mstr': 'BTCUSDT', 'strategy': 'BTCUSDT',
+'microstrategy': 'BTCUSDT', 'eth': 'ETHUSDT', 'ethereum': 'ETHUSDT',
+'sol': 'SOLUSDT', 'solana': 'SOLUSDT', 'xrp': 'XRPUSDT', 'ripple': 'XRPUSDT',
+'bnb': 'BNBUSDT', 'binance': 'BNBUSDT', 'ada': 'ADAUSDT', 'cardano': 'ADAUSDT',
+'doge': 'DOGEUSDT', 'dogecoin': 'DOGEUSDT', 'avax': 'AVAXUSDT',
+'matic': 'MATICUSDT', 'polygon': 'MATICUSDT', 'dot': 'DOTUSDT', 'polkadot': 'DOTUSDT',
+'link': 'LINKUSDT', 'chainlink': 'LINKUSDT', 'uni': 'UNIUSDT', 'uniswap': 'UNIUSDT',
+'atom': 'ATOMUSDT', 'cosmos': 'ATOMUSDT', 'ltc': 'LTCUSDT', 'litecoin': 'LTCUSDT',
+'bch': 'BCHUSDT', 'etc': 'ETCUSDT', 'algo': 'ALGOUSDT', 'xdc': 'XDCUSDT',
+'tao': 'TAOUSDT', 'bittensor': 'TAOUSDT', 'cake': 'CAKEUSDT', 'hex': 'HEXUSDT',
+'aero': 'AEROUSDT', 'fil': 'FILUSDT', 'filecoin': 'FILUSDT', 'icp': 'ICPUSDT',
+'near': 'NEARUSDT', 'xmr': 'XMRUSDT', 'monero': 'XMRUSDT', 'trx': 'TRXUSDT',
+'tron': 'TRXUSDT', 'zec': 'ZECUSDT', 'neiro': 'NEIROUSDT', 'pump': 'PUMPUSDT',
+'1000pepe': '1000PEPEUSDT', '1000sats': '1000SATSUSDT', 'bome': 'BOMEUSDT',
+'spell': 'SPELLUSDT', 'rsr': 'RSRUSDT', 'apt': 'APTUSDT', 'aptos': 'APTUSDT',
+'arb': 'ARBUSDT', 'arbitrum': 'ARBUSDT', 'op': 'OPUSDT', 'optimism': 'OPUSDT',
+'sui': 'SUIUSDT', 'sei': 'SEIUSDT', 'pepe': 'PEPEUSDT', 'wif': 'WIFUSDT',
+'dogwifhat': 'WIFUSDT', 'bonk': 'BONKUSDT', 'floki': 'FLOKIUSDT',
+'shib': 'SHIBUSDT', 'shiba': 'SHIBUSDT', 'meme': 'MEMEUSDT',
+'wld': 'WLDUSDT', 'worldcoin': 'WLDUSDT', 'tia': 'TIAUSDT', 'celestia': 'TIAUSDT',
+'jup': 'JUPUSDT', 'jupiter': 'JUPUSDT', 'pyth': 'PYTHUSDT', 'ondo': 'ONDOUSDT',
+'render': 'RENDERUSDT', 'rndr': 'RENDERUSDT', 'fet': 'FETUSDT', 'fetch': 'FETUSDT',
+'agix': 'AGIXUSDT', 'ocean': 'OCEANUSDT', 'ai': 'AIUSDT',
+'singularitynet': 'AGIXUSDT', 'imx': 'IMXUSDT', 'immutable': 'IMXUSDT',
+'stx': 'STXUSDT', 'stacks': 'STXUSDT', 'inj': 'INJUSDT', 'injective': 'INJUSDT',
+'ton': 'TONUSDT', 'toncoin': 'TONUSDT', 'not': 'NOTUSDT', 'notcoin': 'NOTUSDT',
+'dogs': 'DOGSUSDT', 'hmstr': 'HMSTRUSDT', 'cati': 'CATIUSDT',
+'goat': 'GOATUSDT', 'pnut': 'PNUTUSDT', 'act': 'ACTUSDT', 'usual': 'USUALUSDT',
+'vana': 'VANAUSDT', 'orca': 'ORCAUSDT', 'moodeng': 'MOODENGUSDT',
+'popcat': 'POPCATUSDT', 'mew': 'MEWUSDT', 'brett': 'BRETTUSDT',
+'fartcoin': 'FARTCOINUSDT', 'ai16z': 'AI16ZUSDT', 'trump': 'TRUMPUSDT',
+'melania': 'MELANIAUSDT', 'bera': 'BERAUSDT', 'berachain': 'BERAUSDT',
+'hyperliquid': 'HYPEUSDT', 'hype': 'HYPEUSDT', 'pendle': 'PENDLEUSDT',
+'eigen': 'EIGENUSDT', 'ena': 'ENAUSDT', 'ethena': 'ENAUSDT',
+'jto': 'JTOUSDT', 'jito': 'JTOUSDT', 'w': 'WUSDT', 'wormhole': 'WUSDT',
+'tnsr': 'TNSRUSDT', 'tensor': 'TNSRUSDT', 'drift': 'DRIFTUSDT',
+'zro': 'ZROUSDT', 'layerzero': 'ZROUSDT', 'zk': 'ZKUSDT', 'zksync': 'ZKUSDT',
+'strk': 'STRKUSDT', 'starknet': 'STRKUSDT', 'blur': 'BLURUSDT',
+'gala': 'GALAUSDT', 'sand': 'SANDUSDT', 'mana': 'MANAUSDT', 'axs': 'AXSUSDT',
+'grt': 'GRTUSDT', 'graph': 'GRTUSDT', 'lpt': 'LPTUSDT', 'livepeer': 'LPTUSDT',
+'ar': 'ARUSDT', 'arweave': 'ARUSDT', 'flux': 'FLUXUSDT', 'kda': 'KDAUSDT',
+'kadena': 'KDAUSDT', 'rose': 'ROSEUSDT', 'oasis': 'ROSEUSDT',
+'one': 'ONEUSDT', 'harmony': 'ONEUSDT', 'celo': 'CELOUSDT', 'mina': 'MINAUSDT',
+'kas': 'KASUSDT', 'kaspa': 'KASUSDT', 'beam': 'BEAMUSDT', 'merlin': 'MERLUSDT',
+'core': 'COREUSDT', 'coredao': 'COREUSDT', 'metis': 'METISUSDT',
+'manta': 'MANTAUSDT', 'alt': 'ALTUSDT', 'altlayer': 'ALTUSDT',
+'dym': 'DYMUSDT', 'dymension': 'DYMUSDT', 'saga': 'SAGAUSDT',
+'portal': 'PORTALUSDT', 'pixels': 'PIXELUSDT', 'ace': 'ACEUSDT',
+'fusionist': 'ACEUSDT', 'mav': 'MAVUSDT', 'maverick': 'MAVUSDT',
+'ordi': 'ORDIUSDT', 'rats': 'RATSUSDT', '1000rats': 'RATSUSDT',
+'babydoge': 'BABYDOGEUSDT', 'cat': 'CATUSDT', 'dog': 'DOGUSDT'
+}
+};
+function analyzeNewsWithAI(title, description) {
+const text = (title + ' ' + description).toLowerCase();
+let verbScore = 0;
+let mainVerb = null;
+let verbWeight = 0;
+for (const [verb, score] of Object.entries(NEWS_CONFIG.verbSentiment)) {
+const verbIdx = text.indexOf(verb.toLowerCase());
+if (verbIdx !== -1) {
+if (Math.abs(score) > Math.abs(verbWeight)) {
+verbWeight = score;
+mainVerb = verb;
+let isNegated = false;
+for (const neg of NEWS_CONFIG.negationWords) {
+const negIdx = text.indexOf(neg.toLowerCase());
+if (negIdx !== -1 && Math.abs(negIdx - verbIdx) < 100) {
+if (negIdx < verbIdx) { isNegated = true; break; }
+}
+}
+if (isNegated) {
+for (const pos of NEWS_CONFIG.positiveContextWords) {
+const posIdx = text.indexOf(pos.toLowerCase());
+if (posIdx !== -1 && posIdx < verbIdx && Math.abs(posIdx - verbIdx) < 150) {
+isNegated = false; break;
+}
+}
+}
+verbScore = isNegated ? -score : score;
+}
+}
+}
+let keywordScore = 0;
+NEWS_CONFIG.pumpKeywords.forEach(kw => { if (text.includes(kw.toLowerCase())) keywordScore += 0.5; });
+NEWS_CONFIG.dumpKeywords.forEach(kw => { if (text.includes(kw.toLowerCase())) keywordScore -= 0.5; });
+let structureBonus = 0;
+if (text.match(/için.*açtı|açtı.*için/)) structureBonus += 1;
+if (text.match(/yasakladı|ban.*ed/)) structureBonus -= 1;
+if (text.match(/izin verdi|permission granted/)) structureBonus += 1.5;
+if (text.match(/askıya aldı|suspended/)) structureBonus -= 1;
+const totalScore = (verbScore * 3) + keywordScore + structureBonus;
+const confidence = Math.abs(totalScore);
+let direction = 'NEUTRAL';
+if (totalScore > 1.5) direction = 'PUMP';
+else if (totalScore < -1.5) direction = 'DUMP';
+return {
+score: totalScore,
+verbScore: verbScore,
+keywordScore: keywordScore,
+structureBonus: structureBonus,
+mainVerb: mainVerb,
+direction: direction,
+confidence: confidence,
+reason: mainVerb ? `Ana fiil: "${mainVerb}" (${verbScore > 0 ? '+' : ''}${verbScore.toFixed(1)})` : 'Fiil tespit edilemedi'
+};
+}
+function safeValue(id, fallback) {
+const el = document.getElementById(id);
+return el && el.value !== undefined ? el.value : fallback;
+}
+function saveLearningData() { try { localStorage.setItem('zeusBotLearning_v179', JSON.stringify(learningData)); } catch(e) {} }
+function loadLearningData() {
+try {
+const saved = localStorage.getItem('zeusBotLearning_v179');
+if (saved) { const parsed = JSON.parse(saved); learningData = { ...learningData, ...parsed }; }
+} catch(e) {}
+}
+function clearLearningData() {
+if (confirm('Tüm öğrenme verisi silinecek. Emin misiniz?')) {
+learningData = { signals: [], indicatorPerformance: {}, strategyPerformance: { scalping: {wins:0, losses:0, avgPnl:0}, swing: {wins:0, losses:0, avgPnl:0}, breakout: {wins:0, losses:0, avgPnl:0}, liquidity: {wins:0, losses:0, avgPnl:0}, harmonic: {wins:0, losses:0, avgPnl:0} }, dynamicWeights: { MACD: 1.0, RSI: 1.5, Bollinger: 1.0, Volume: 1.0, Pattern: 1.0, ADX: 1.5, EMA: 1.0, Momentum: 1.0, Liquidity: 1.0, Harmonic: 2.0, PineScript: 1.5 }, autoTunedParams: { tp1Mult: 1.5, tp2Mult: 2.5, tp3Mult: 4.0, slMult: 7.0, strategy: 'scalping', breakoutBanned: true }, lastAutoTune: 0 };
+saveLearningData(); updateLearningDisplay(); log('🧠 Sıfırlandı', 'warn');
+}
+}
+function fmt(n, d=2) { return parseFloat(n).toFixed(d); }
+function fmtP(n, d=2) { return parseFloat(n).toFixed(d) + '%'; }
+function fmtPrice(p) {
+if (p >= 1000) return '$' + parseFloat(p).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+if (p >= 1) return '$' + parseFloat(p).toFixed(2);
+if (p >= 0.01) return '$' + parseFloat(p).toFixed(4);
+return '$' + parseFloat(p).toFixed(6);
+}
+function fmtVol(v) {
+if (!v) return '0$';
+if (v >= 1e9) return (v/1e9).toFixed(2) + 'B$';
+if (v >= 1e6) return (v/1e6).toFixed(2) + 'M$';
+if (v >= 1e3) return (v/1e3).toFixed(2) + 'K$';
+return v.toFixed(0) + '$';
+}
+function log(msg, type='info') {
+const time = new Date().toLocaleTimeString('tr-TR');
+const colors = { info: '#58a6ff', warn: '#d29922', error: '#da3633', success: '#3fb950' };
+logEntries.unshift({ time, msg, type });
+if (logEntries.length > 50) logEntries.pop();
+const logEl = document.getElementById('log');
+if (logEl) logEl.innerHTML = logEntries.slice(0, 30).map(e => `<div class="log-entry"><span class="time">[${e.time}]</span> <span style="color:${colors[e.type] || '#c9d1d9'}">${e.msg}</span></div>`).join('');
+}
+async function fetchJSON(url) {
+try { const r = await fetch(url); if (r.ok) return await r.json(); } catch(e) {}
+return null;
+}
+async function batchFetch(items, fn, batchSize = CONFIG.BATCH_SIZE, delay = CONFIG.BATCH_DELAY) {
+const results = [];
+const total = items.length;
+const progressBar = document.getElementById('progressBar');
+const progressFill = document.getElementById('progressFill');
+if (progressBar) progressBar.style.display = 'block';
+for (let i = 0; i < total; i += batchSize) {
+const batch = items.slice(i, i + batchSize);
+const batchResults = await Promise.all(batch.map(fn));
+results.push(...batchResults);
+if (progressFill) { const progress = Math.min(100, (results.filter(r => r !== null).length / total) * 100); progressFill.style.width = progress + '%'; }
+if (i + batchSize < total) await new Promise(r => setTimeout(r, delay));
+}
+if (progressBar) progressBar.style.display = 'none';
+return results;
+}
+async function fetchAndAnalyzeNews() {
+const newsStatusEl = document.getElementById('newsStatus');
+if (newsStatusEl) { newsStatusEl.textContent = 'Yükleniyor...'; newsStatusEl.className = 'news-status loading'; }
+newsFetchCount++;
+let allItems = [];
+let successCount = 0;
+log('📰 CoinGecko + Binance haberleri çekiliyor...', 'info');
+for (const apiUrl of NEWS_CONFIG.coinGeckoUrls) {
+try {
+const response = await fetch(apiUrl);
+if (response.ok) {
+const data = await response.json();
+if (data && data.status_updates && data.status_updates.length > 0) {
+const items = data.status_updates.map(item => ({
+title: item.project ? (item.project.name || 'Crypto') + ' - ' + (item.title || 'Update') : (item.title || 'Crypto Update'),
+description: item.description || item.message || '',
+link: item.link || '',
+pubDate: item.created_at || new Date().toISOString(),
+author: item.project ? item.project.name : 'CoinGecko',
+guid: `cg_${item.id || Math.random()}`
+}));
+allItems = allItems.concat(items);
+successCount++;
+log(`✅ CoinGecko: ${items.length} haber`, 'success');
+}
+}
+} catch(e) {
+log(`⚠️ CoinGecko sayfa hatası: ${e.message}`, 'warn');
+}
+}
+try {
+const binanceResponse = await fetch(NEWS_CONFIG.binanceNewsUrl);
+if (binanceResponse.ok) {
+const binanceData = await binanceResponse.json();
+if (binanceData && binanceData.data && binanceData.data.catalogs) {
+const articles = binanceData.data.catalogs.flatMap(cat => cat.articles || []);
+const items = articles.map(article => ({
+title: article.title || '',
+description: article.brief || '',
+link: `https://www.binance.com/en/support/announcement/${article.code || ''}`,
+pubDate: new Date(article.releaseDate || article.releaseTimestamp || Date.now()).toISOString(),
+author: 'Binance',
+guid: `bn_${article.code || article.id}`
+}));
+allItems = allItems.concat(items);
+successCount++;
+log(`✅ Binance: ${items.length} duyuru`, 'success');
+}
+}
+} catch(e) {
+log(`⚠️ Binance haber hatası: ${e.message}`, 'warn');
+}
+if (successCount === 0) {
+newsErrorCount++;
+if (newsStatusEl) { newsStatusEl.textContent = `Hata (${newsErrorCount})`; newsStatusEl.className = 'news-status error'; }
+log(`📰 Haber alınamadı (${newsErrorCount} ardışık hata)`, 'warn');
+return;
+}
+newsErrorCount = 0;
+if (newsStatusEl) { newsStatusEl.textContent = `Aktif (${successCount} kaynak, ${allItems.length} haber)`; newsStatusEl.className = 'news-status active'; }
+processNewsItems(allItems);
+}
+function processNewsItems(items) {
+const newsListEl = document.getElementById('newsList');
+if (!newsListEl) return;
+let newSignals = [];
+items.forEach(item => {
+const itemId = item.guid || item.link;
+if (processedNewsIds.has(itemId)) return;
+const title = item.title || '';
+const description = item.description || '';
+const mentionedCoins = [];
+const fullText = (title + ' ' + description).toLowerCase();
+for (const [key, symbol] of Object.entries(NEWS_CONFIG.coinMap)) {
+if (fullText.includes(key) || fullText.includes('$' + key)) {
+if (!mentionedCoins.includes(symbol)) mentionedCoins.push(symbol);
+}
+}
+if (mentionedCoins.length === 0) return;
+const aiResult = analyzeNewsWithAI(title, description);
+if (aiResult.direction === 'NEUTRAL') return;
+const signal = {
+id: itemId, coins: mentionedCoins, title: item.title, link: item.link,
+impact: aiResult.direction, confidence: aiResult.confidence,
+time: new Date(item.pubDate).toLocaleTimeString('tr-TR'),
+source: item.author || 'Crypto News',
+aiScore: aiResult.score,
+aiVerb: aiResult.mainVerb,
+aiReason: aiResult.reason
+};
+newSignals.push(signal);
+processedNewsIds.add(signal.id);
+if (processedNewsIds.size > 100) processedNewsIds = new Set(Array.from(processedNewsIds).slice(-50));
+if (aiResult.confidence >= 1.5) {
+log(`🤖 AI: ${signal.coins.join(', ')} - ${signal.impact} (Skor: ${aiResult.score.toFixed(2)}, Fiil: "${aiResult.mainVerb || 'yok'}")`, aiResult.direction === 'PUMP' ? 'success' : 'error');
+injectNewsBoost(signal.coins, signal.impact, aiResult.confidence);
+}
+});
+if (newSignals.length > 0) {
+const currentHtml = newsListEl.innerHTML.includes('analiz bekleniyor') ? '' : newsListEl.innerHTML;
+newsListEl.innerHTML = newSignals.map(s => {
+const coinBadges = s.coins.map(c => `<span class="news-coin">${c.replace('USDT','')}</span>`).join('');
+const impactClass = s.impact === 'PUMP' ? 'pump' : 'dump';
+const impactIcon = s.impact === 'PUMP' ? '🟢' : '🔴';
+return `<div class="news-card ${impactClass}">
+<div class="news-header">
+<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+${coinBadges}
+<span class="news-impact ${impactClass}">${impactIcon} ${s.impact} (AI Skor: ${s.aiScore.toFixed(2)})</span>
+</div>
+<span class="news-time">${s.time}</span>
+</div>
+<div class="news-title">${s.title}</div>
+<div class="news-ai-reason">🤖 ${s.aiReason} • Güven: ${s.confidence.toFixed(2)}</div>
+<div style="font-size:10px;color:#8b949e;">Kaynak: ${s.source} • <a href="${s.link}" target="_blank" class="news-link">Haberi Oku ↗</a></div>
+</div>`;
+}).join('') + currentHtml;
+} else {
+log('ℹ️ Analiz edilebilir haber bulunamadı (nötr haberler atlandı)', 'info');
+}
+}
+function injectNewsBoost(coins, direction, strength) {
+const expiry = Date.now() + 3600000;
+coins.forEach(coinSymbol => {
+if (!newsBoosts[coinSymbol]) newsBoosts[coinSymbol] = { pump: 0, dump: 0 };
+if (direction === 'PUMP') newsBoosts[coinSymbol].pump += strength * 5;
+else newsBoosts[coinSymbol].dump += strength * 5;
+newsBoosts[coinSymbol].expiry = expiry;
+});
+}
+function startNewsMonitor() {
+if (newsInterval) return;
+fetchAndAnalyzeNews();
+newsInterval = setInterval(fetchAndAnalyzeNews, NEWS_CONFIG.checkInterval);
+log('📰 Haber Analizi başlatıldı (CoinGecko + Binance - CORS AÇIK)', 'success');
+}
+function stopNewsMonitor() {
+if (newsInterval) {
+clearInterval(newsInterval);
+newsInterval = null;
+log('⏹️ Haber Analizi durduruldu', 'warn');
+}
+}
+function updateLiquidityCommentary() {
+const contentEl = document.getElementById('liqCommentaryContent');
+if (!contentEl) return;
+const lsCoins = Object.entries(liquidityData.lsRatios).slice(0, 6);
+if (lsCoins.length === 0) { contentEl.innerHTML = '<div class="insight-item neutral">Yorum için veri bekleniyor...</div>'; return; }
+let totalRatio = 0, longDominant = 0, shortDominant = 0;
+let coinComments = [], shortCoins = [], longCoins = [], neutralCoins = [];
+lsCoins.forEach(([symbol, data]) => {
+const ls = data.lsGlobal;
+const coin = symbol.replace('USDT', '');
+totalRatio += ls;
+let riskLevel, riskClass, commentText, expectedMove, expectedClass;
+if (ls > 4.0) { riskLevel = 'KRİTİK TEHLİKE'; riskClass = 'critical'; commentText = `Aşırı Long Birikimi (${ls.toFixed(2)}:1). Her${ls.toFixed(1)} LONG pozisyona karşılık sadece 1 SHORT var.`; expectedMove = '📉 Düşüş (Long avı)'; expectedClass = 'bearish'; longDominant++; longCoins.push(coin); }
+else if (ls > 3.0) { riskLevel = 'YÜKSEK RİSK'; riskClass = 'high'; commentText = `Güçlü Long Birikimi (${ls.toFixed(2)}:1). Retail LONG dominant.`; expectedMove = '📉 Düşüş (Long avı)'; expectedClass = 'bearish'; longDominant++; longCoins.push(coin); }
+else if (ls > 2.0) { riskLevel = 'ORTA-YÜKSEK RİSK'; riskClass = 'high'; commentText = `Long Birikimi (${ls.toFixed(2)}:1). LONG baskın.`; expectedMove = '📉 Düşüş (Long avı)'; expectedClass = 'bearish'; longDominant++; longCoins.push(coin); }
+else if (ls > 1.5) { riskLevel = 'ORTA RİSK'; riskClass = 'medium'; commentText = `Hafif Long Birikimi (${ls.toFixed(2)}:1).`; expectedMove = '➡️ Hafif Düşüş veya Yatay'; expectedClass = 'bearish'; longDominant++; neutralCoins.push(coin); }
+else if (ls >= 1.0) { riskLevel = 'DENGELİ'; riskClass = 'medium'; commentText = `Dengeli (${ls.toFixed(2)}:1). Net yön belirsiz.`; expectedMove = '➡️ Yatay'; expectedClass = ''; neutralCoins.push(coin); }
+else if (ls >= 0.8) { riskLevel = 'SHORT BİRİKİMİ (FIRSAT!)'; riskClass = 'low'; commentText = `Short Birikimi (${ls.toFixed(2)}:1) — SHORT > LONG.`; expectedMove = '📈 Yükseliş (Short squeeze)'; expectedClass = 'bullish'; shortDominant++; shortCoins.push(coin); }
+else { riskLevel = 'AŞIRI SHORT (FIRSAT!)'; riskClass = 'low'; commentText = `Aşırı Short Birikimi (${ls.toFixed(2)}:1).`; expectedMove = '📈 Yükseliş (Short squeeze)'; expectedClass = 'bullish'; shortDominant++; shortCoins.push(coin); }
+coinComments.push({ coin, ls, riskLevel, riskClass, commentText, expectedMove, expectedClass });
+});
+let summaryDirection, summaryClass, summaryText;
+if (longDominant >= 4) { summaryDirection = 'AŞIRI LONG BİRİKİMİ - YÜKSEK DÜŞÜŞ RİSKİ'; summaryClass = 'bearish'; summaryText = `Piyasadaki ${lsCoins.length} coin'den${longDominant}'i LONG tarafında aşırı birikim gösteriyor.`; }
+else if (shortDominant >= 3) { summaryDirection = 'SHORT BİRİKİMİ - YÜKSELİŞ POTANSİYELİ'; summaryClass = 'bullish'; summaryText = `Piyasada SHORT birikimi baskın. Short squeeze fırsatı.`; }
+else { summaryDirection = 'KARIŞIK SİNYAL'; summaryClass = ''; summaryText = `Piyasa karışık sinyal veriyor.`; }
+const coinCardsHtml = coinComments.map(c => `<div class="liq-coin-comment ${c.riskClass === 'critical' || c.riskClass === 'high' ? 'danger' : (c.riskClass === 'low' ? 'opportunity' : 'warning')}">
+<div class="cc-header"><span class="cc-coin">${c.coin} LS RATIO:${c.ls.toFixed(2)}</span><span class="cc-risk ${c.riskClass}">${c.riskLevel}</span></div>
+<div class="cc-field"><div class="cc-field-label">Durum:</div><div class="cc-field-value">${c.commentText}</div></div>
+<div class="cc-field"><div class="cc-field-label">Risk:</div><div class="cc-field-value ${c.expectedClass}">⚠️ ${c.riskClass === 'critical' ? 'ÇOK YÜKSEK' : (c.riskClass === 'high' ? 'YÜKSEK' : (c.riskClass === 'medium' ? 'ORTA' : 'DÜŞÜK'))} — ${c.riskClass === 'critical' ? 'Long squeeze riski çok yüksek.' : (c.riskClass === 'high' ? 'Long tasfiye dalgası tetiklenebilir.' : (c.riskClass === 'low' ? 'Short squeeze riski yüksek.' : 'Dikkatli takip edilmeli.'))}</div></div>
+<div class="cc-field"><div class="cc-field-label">Beklenen Hareket:</div><div class="cc-field-value ${c.expectedClass}">${c.expectedMove}</div></div>
+</div>`).join('');
+const strategyRows = [];
+if (longCoins.length > 0) strategyRows.push(`<tr><td><strong>SHORT Pozisyon</strong></td><td>${longCoins.join(', ')} için SHORT fırsatı (Long avı bekleniyor)</td></tr>`);
+if (shortCoins.length > 0) strategyRows.push(`<tr><td><strong>LONG Pozisyon</strong></td><td>${shortCoins.join(', ')} için LONG fırsatı (Short squeeze bekleniyor)</td></tr>`);
+if (neutralCoins.length > 0) strategyRows.push(`<tr><td><strong>Dikkatli Olun</strong></td><td>${neutralCoins.join(', ')} nispeten dengeli</td></tr>`);
+strategyRows.push(`<tr><td><strong>Risk Yönetimi</strong></td><td>Yüksek kaldıraçtan kaçının, stop-loss kullanın</td></tr>`);
+contentEl.innerHTML = `<div style="background:rgba(188,140,255,0.08);border:1px solid #bc8cff;border-radius:8px;padding:12px;margin-bottom:15px;">
+<strong style="color:#bc8cff;font-size:14px;">📊 GENEL PİYASA DURUMU:</strong> <span class="summary-direction ${summaryClass}" style="font-size:15px;font-weight:bold;">${summaryDirection}</span>
+<div style="margin-top:8px;color:#c9d1d9;font-size:13px;line-height:1.5;">${summaryText}</div></div>
+<h4 style="color:#bc8cff;margin:15px 0 10px;font-size:14px;">🪙 COİN BAZLI ANALİZ</h4>
+<div class="liq-commentary-grid">${coinCardsHtml}</div>
+<h4 style="color:#bc8cff;margin:15px 0 10px;font-size:14px;">💡 GENEL STRATEJİ ÖNERİSİ</h4>
+<table class="liq-strategy-table"><thead><tr><th>Strateji</th><th>Açıklama</th></tr></thead><tbody>${strategyRows.join('')}</tbody></table>
+<h4 style="color:#bc8cff;margin:15px 0 10px;font-size:14px;">⚠️ RİSK UYARILARI</h4>
+<ul class="liq-risk-list">
+${longCoins.length > 0 ? `<li><strong>Long Squeeze Riski:</strong> ${longCoins.join(', ')} tehlikeli seviyelerde</li>` : ''}
+${shortCoins.length > 0 ? `<li><strong>Short Squeeze Fırsatı:</strong> ${shortCoins.join(', ')} yükseliş potansiyeli var</li>` : ''}
+<li><strong>Piyasa Yapıcı Davranışı:</strong> Yüksek LS Ratio = Market Maker'lar fiyatı düşürerek LONG'ları tasfiye etmeye çalışabilir</li>
+<li><strong>Zincirleme Tasfiye:</strong> Bir coin'deki düşüş diğerlerini de etkileyebilir</li>
+</ul>
+<div style="background:rgba(188,140,255,0.08);border:1px solid #bc8cff;border-radius:8px;padding:12px;margin-top:15px;">
+<strong style="color:#bc8cff;">🎯 SONUÇ:</strong>
+<div style="color:#c9d1d9;margin-top:6px;line-height:1.5;">Piyasa genelinde ${longDominant > shortDominant ? 'LONG birikimi dominant. Düşüş yönlü hareket (Long avı) daha olası.' : (shortDominant > longDominant ? 'SHORT birikimi dominant. Short squeeze fırsatı.' : 'karışık sinyal.')} ${shortCoins.length > 0 ? `Ancak ${shortCoins.join(', ')} gibi istisnai durumlarda Short squeeze fırsatı aranabilir.` : ''}</div>
+</div>
+<div class="liq-golden-rule">Altın Kural: LS Ratio > 3 olan coin'lerde SHORT, LS Ratio < 1 olan coin'lerde LONG düşünün. Ama her zaman stop-loss kullanın!</div>`;
+}
+function calculateRSIArray(closes, period=14) {
+if (closes.length < period + 1) return new Array(closes.length).fill(50);
+const rsiArr = new Array(closes.length).fill(50);
+let gains = 0, losses = 0;
+for (let i = 1; i <= period; i++) { const c = closes[i] - closes[i-1]; if (c > 0) gains += c; else losses -= c; }
+let avgGain = gains / period, avgLoss = losses / period;
+rsiArr[period] = 100 - (100 / (1 + avgGain / (avgLoss || 1)));
+for (let i = period + 1; i < closes.length; i++) { const c = closes[i] - closes[i-1]; avgGain = (avgGain * (period - 1) + (c > 0 ? c : 0)) / period; avgLoss = (avgLoss * (period - 1) + (c < 0 ? -c : 0)) / period; rsiArr[i] = 100 - (100 / (1 + avgGain / (avgLoss || 1))); }
+return rsiArr;
+}
+function calculateADX(klines, period=14) {
+if (klines.length < period * 2) return { adx: 0, diPlus: 0, diMinus: 0 };
+let trSum = 0, dmPlusSum = 0, dmMinusSum = 0;
+const trs = [], dmPluses = [], dmMinuses = [];
+for (let i = 1; i < klines.length; i++) { const high = parseFloat(klines[i][2]), low = parseFloat(klines[i][3]); const prevClose = parseFloat(klines[i-1][4]), prevHigh = parseFloat(klines[i-1][2]), prevLow = parseFloat(klines[i-1][3]); const tr = Math.max(high - low, Math.abs(high - prevClose), Math.abs(low - prevClose)); const dmPlus = high - prevHigh > prevLow - low && high - prevHigh > 0 ? high - prevHigh : 0; const dmMinus = prevLow - low > high - prevHigh && prevLow - low > 0 ? prevLow - low : 0; trs.push(tr); dmPluses.push(dmPlus); dmMinuses.push(dmMinus); }
+for (let i = 0; i < period; i++) { trSum += trs[i]; dmPlusSum += dmPluses[i]; dmMinusSum += dmMinuses[i]; }
+let atr = trSum / period; let diPlus = (dmPlusSum / period) / atr * 100; let diMinus = (dmMinusSum / period) / atr * 100; let dx = Math.abs(diPlus - diMinus) / (diPlus + diMinus || 1) * 100; let adx = dx;
+for (let i = period; i < trs.length; i++) { atr = (atr * (period - 1) + trs[i]) / period; const sDmP = (dmPlusSum * (period - 1) + dmPluses[i]) / period; const sDmM = (dmMinusSum * (period - 1) + dmMinuses[i]) / period; dmPlusSum = sDmP; dmMinusSum = sDmM; diPlus = sDmP / atr * 100; diMinus = sDmM / atr * 100; dx = Math.abs(diPlus - diMinus) / (diPlus + diMinus || 1) * 100; adx = (adx * (period - 1) + dx) / period; }
+return { adx: Math.round(adx * 10) / 10, diPlus: Math.round(diPlus * 10) / 10, diMinus: Math.round(diMinus * 10) / 10 };
+}
+function detectPineSignals(d) {
+let pumpVotes = 0, dumpVotes = 0; const reasons = [], activeIndicators = []; const closes = d.closes; const highs = d.klines.map(k => parseFloat(k[2])); const lows = d.klines.map(k => parseFloat(k[3])); const volumes = d.klines.map(k => parseFloat(k[5])); const n = closes.length;
+if (n < 20) return { pumpVotes, dumpVotes, reasons, activeIndicators };
+const rsiHistory = d.rsiHistory || []; const currentRsi = rsiHistory[n-1] !== undefined ? rsiHistory[n-1] : d.rsi; const prevRsi = rsiHistory[n-2] !== undefined ? rsiHistory[n-2] : currentRsi; const lookback = 15;
+if (n > lookback && rsiHistory.length >= n) { const priceDrop = closes[n-1] < closes[n-1-lookback]; const rsiRise = currentRsi > rsiHistory[n-1-lookback]; if (priceDrop && rsiRise && currentRsi < 45) { pumpVotes += 3; reasons.push("📈 RSI Pozitif Uyumsuzluk"); activeIndicators.push("RSI_Bull_Div"); } const priceRise = closes[n-1] > closes[n-1-lookback]; const rsiFall = currentRsi < rsiHistory[n-1-lookback]; if (priceRise && rsiFall && currentRsi > 55) { dumpVotes += 3; reasons.push("📉 RSI Negatif Uyumsuzluk"); activeIndicators.push("RSI_Bear_Div"); } }
+const volSma20 = volumes.slice(-20).reduce((a,b)=>a+b,0) / 20; const currentVol = volumes[n-1];
+if (currentVol > volSma20 * 1.5 && currentRsi > 50 && prevRsi <= 50) { pumpVotes += 4; reasons.push("📊 Hacim + Momentum Yükselişi"); activeIndicators.push("Vol_Mom_Bull"); }
+if (currentVol < volSma20 * 0.7 && currentRsi < 50 && prevRsi >= 50) { dumpVotes += 4; reasons.push("🔻 Hacim Düşüş + Momentum Kaybı"); activeIndicators.push("Vol_Mom_Bear"); }
+const ema8 = calculateEMA(closes, 8); const ema13 = calculateEMA(closes, 13); const ema55 = calculateEMA(closes, 55); const prevEma8 = calculateEMA(closes.slice(0, -1), 8); const prevEma13 = calculateEMA(closes.slice(0, -1), 13);
+if (ema8 !== null && ema13 !== null && ema55 !== null && prevEma8 !== null && prevEma13 !== null) { const emaCrossUp = ema8 > ema13 && prevEma8 <= prevEma13; const emaCrossDown = ema8 < ema13 && prevEma8 >= prevEma13; const price = closes[n-1]; const breakoutUp = price > ema55 * 1.005; const breakoutDown = price < ema55 * 0.995; if (emaCrossUp && breakoutUp) { pumpVotes += 5; reasons.push("🔥 SÜPER AL: RTrend Kesişimi + Sihirli Kırılım"); activeIndicators.push("Super_AL"); } if (emaCrossDown && breakoutDown) { dumpVotes += 5; reasons.push("🔥 SÜPER SAT: RTrend Kesişimi + Sihirli Kırılım"); activeIndicators.push("Super_SAT"); } }
+const fibLookback = 20; const fibHigh = Math.max(...highs.slice(-fibLookback)); const fibLow = Math.min(...lows.slice(-fibLookback)); const fibRange = fibHigh - fibLow; const fib618_up = fibLow + (fibRange * 0.618); const fib618_down = fibHigh - (fibRange * 0.618); const minBreakout = fibRange * 0.005; const prevClose = closes[n-2]; const currClose = closes[n-1];
+if (currClose > fib618_up && prevClose <= fib618_up && currClose > fib618_up + minBreakout) { pumpVotes += 4; reasons.push("⭐ SÜPER AL: %61.8 Fibo Kırılımı"); activeIndicators.push("Fibo618_Break_Up"); }
+if (currClose < fib618_down && prevClose >= fib618_down && currClose < fib618_down - minBreakout) { dumpVotes += 4; reasons.push("⭐ SÜPER SAT: %61.8 Fibo Kırılımı"); activeIndicators.push("Fibo618_Break_Down"); }
+const swingHigh = Math.max(...highs.slice(-15, -5)); const swingLow = Math.min(...lows.slice(-15, -5));
+if (currClose > swingHigh && prevClose <= swingHigh && currentRsi > 50) { pumpVotes += 8; reasons.unshift("🚨 SON MUMDA CHoCH KIRILIMI: PUMP ORANI YÜKSEK!"); activeIndicators.push("CHoCH_Bull_LastCandle"); }
+if (currClose < swingLow && prevClose >= swingLow && currentRsi < 50) { dumpVotes += 8; reasons.unshift("🚨 SON MUMDA CHoCH KIRILIMI: DUMP ORANI YÜKSEK!"); activeIndicators.push("CHoCH_Bear_LastCandle"); }
+if (n >= 3) { const h2 = highs[n-3], l2 = lows[n-3]; const h0 = highs[n-1], l0 = lows[n-1]; if (h2 < l0) { pumpVotes += 2; reasons.push("🟩 FVG: Boşluk Kırılımı (AL)"); activeIndicators.push("FVG_Bull"); } if (l2 > h0) { dumpVotes += 2; reasons.push("🟥 FVG: Boşluk Kırılımı (SAT)"); activeIndicators.push("FVG_Bear"); } }
+return { pumpVotes, dumpVotes, reasons, activeIndicators };
+}
+function detectHarmonicPatterns(klines) {
+const patterns = []; const tolerance = 0.06;
+const findPivots = (bars, isHigh) => { const pivots = []; for (let i = 3; i < bars.length - 3; i++) { const current = isHigh ? parseFloat(bars[i][2]) : parseFloat(bars[i][3]); const isPivot = isHigh ? current > parseFloat(bars[i-1][2]) && current > parseFloat(bars[i-2][2]) && current > parseFloat(bars[i-3][2]) && current > parseFloat(bars[i+1][2]) && current > parseFloat(bars[i+2][2]) && current > parseFloat(bars[i+3][2]) : current < parseFloat(bars[i-1][3]) && current < parseFloat(bars[i-2][3]) && current < parseFloat(bars[i-3][3]) && current < parseFloat(bars[i+1][3]) && current < parseFloat(bars[i+2][3]) && current < parseFloat(bars[i+3][3]); if (isPivot) pivots.push({ index: i, price: current, time: bars[i][0] }); } return pivots; };
+const highs = findPivots(klines, true); const lows = findPivots(klines, false);
+const checkPattern = (p1, p2, p3, p4, isBullish) => { const X = p1.price, A = p2.price, B = p3.price, C = p4.price; const XA = Math.abs(A - X); const AB = Math.abs(A - B); const BC = Math.abs(B - C); if (XA === 0) return null; const ratioAB_XA = AB / XA; const ratioBC_AB = BC / AB; let patternName = null; let targetD = 0; if (Math.abs(ratioAB_XA - 0.618) < tolerance && (ratioBC_AB >= 0.382 - tolerance && ratioBC_AB <= 0.886 + tolerance)) { patternName = isBullish ? "Bullish Gartley" : "Bearish Gartley"; targetD = isBullish ? X + (XA * 0.786) : X - (XA * 0.786); } else if ((ratioAB_XA >= 0.382 - tolerance && ratioAB_XA <= 0.5 + tolerance) && (ratioBC_AB >= 0.382 - tolerance && ratioBC_AB <= 0.886 + tolerance)) { patternName = isBullish ? "Bullish Bat" : "Bearish Bat"; targetD = isBullish ? X + (XA * 0.886) : X - (XA * 0.886); } else if (Math.abs(ratioAB_XA - 0.786) < tolerance && (ratioBC_AB >= 0.382 - tolerance && ratioBC_AB <= 0.886 + tolerance)) { patternName = isBullish ? "Bullish Butterfly" : "Bearish Butterfly"; targetD = isBullish ? X + (XA * 1.27) : X - (XA * 1.27); } else if ((ratioAB_XA >= 0.382 - tolerance && ratioAB_XA <= 0.618 + tolerance) && (ratioBC_AB >= 0.382 - tolerance && ratioBC_AB <= 0.886 + tolerance)) { patternName = isBullish ? "Bullish Crab" : "Bearish Crab"; targetD = isBullish ? X + (XA * 1.618) : X - (XA * 1.618); } else if ((ratioAB_XA >= 0.382 - tolerance && ratioAB_XA <= 0.618 + tolerance)) { const XC = Math.abs(X - C); const ratioXC_XA = XC / XA; if (ratioXC_XA >= 1.13 - tolerance && ratioXC_XA <= 1.414 + tolerance) { patternName = isBullish ? "Bullish Cypher" : "Bearish Cypher"; targetD = isBullish ? X + (XC * 0.786) : X - (XC * 0.786); } } if (patternName) { const currentPrice = parseFloat(klines[klines.length-1][4]); const distToPRZ = Math.abs(currentPrice - targetD) / targetD; if (distToPRZ < 0.025) { return { type: 'harmonic_' + (isBullish ? 'bull' : 'bear'), description: `${patternName} PRZ Bölgesinde (Hedef D: ${fmtPrice(targetD)})`, score: 0.95, targetPrice: targetD }; } } return null; };
+for (let i = 0; i < Math.min(5, lows.length); i++) { for (let j = 0; j < Math.min(5, highs.length); j++) { for (let k = 0; k < Math.min(5, lows.length); k++) { for (let l = 0; l < Math.min(5, highs.length); l++) { if (lows[i].index < highs[j].index && highs[j].index < lows[k].index && lows[k].index < highs[l].index) { const pat = checkPattern(lows[i], highs[j], lows[k], highs[l], true); if (pat) patterns.push(pat); } } } } }
+for (let i = 0; i < Math.min(5, highs.length); i++) { for (let j = 0; j < Math.min(5, lows.length); j++) { for (let k = 0; k < Math.min(5, highs.length); k++) { for (let l = 0; l < Math.min(5, lows.length); l++) { if (highs[i].index < lows[j].index && lows[j].index < highs[k].index && highs[k].index < lows[l].index) { const pat = checkPattern(highs[i], lows[j], highs[k], lows[l], false); if (pat) patterns.push(pat); } } } } }
+return patterns.filter((v,i,a) => a.findIndex(t => (t.type === v.type && Math.abs(t.targetPrice - v.targetPrice) < (v.targetPrice * 0.01))) === i);
+}
+function generatePatternChart(klines, smartPatterns, direction) {
+if (!klines || klines.length < 20) return '';
+const chartWidth = 320; const chartHeight = 140; const padding = { top: 10, right: 10, bottom: 20, left: 10 };
+const innerWidth = chartWidth - padding.left - padding.right; const innerHeight = chartHeight - padding.top - padding.bottom;
+const displayKlines = klines.slice(-30); const highs = displayKlines.map(k => parseFloat(k[2])); const lows = displayKlines.map(k => parseFloat(k[3])); const closes = displayKlines.map(k => parseFloat(k[4])); const opens = displayKlines.map(k => parseFloat(k[1]));
+const allHigh = Math.max(...highs); const allLow = Math.min(...lows); const priceRange = allHigh - allLow || 1;
+const candleWidth = innerWidth / displayKlines.length; const bodyWidth = Math.max(2, candleWidth * 0.6);
+const priceToY = (price) => padding.top + innerHeight - ((price - allLow) / priceRange) * innerHeight;
+const indexToX = (i) => padding.left + i * candleWidth + candleWidth / 2;
+let svg = `<svg width="${chartWidth}" height="${chartHeight}" viewBox="0 0 ${chartWidth}${chartHeight}" style="background:#0d1117;border-radius:6px;border:1px solid #30363d;">`;
+for (let i = 0; i <= 4; i++) { const y = padding.top + (innerHeight / 4) * i; svg += `<line x1="${padding.left}" y1="${y}" x2="${chartWidth - padding.right}" y2="${y}" stroke="#21262d" stroke-width="0.5" stroke-dasharray="2,2"/>`; }
+displayKlines.forEach((k, i) => { const open = opens[i]; const close = closes[i]; const high = highs[i]; const low = lows[i]; const x = indexToX(i); const isGreen = close >= open; const color = isGreen ? '#3fb950' : '#f85149'; svg += `<line x1="${x}" y1="${priceToY(high)}" x2="${x}" y2="${priceToY(low)}" stroke="${color}" stroke-width="1"/>`; const bodyTop = priceToY(Math.max(open, close)); const bodyBottom = priceToY(Math.min(open, close)); const bodyHeight = Math.max(1, bodyBottom - bodyTop); svg += `<rect x="${x - bodyWidth/2}" y="${bodyTop}" width="${bodyWidth}" height="${bodyHeight}" fill="${color}" rx="1"/>`; });
+if (smartPatterns && smartPatterns.length > 0) { smartPatterns.forEach((pattern, idx) => { const colors = { 'rounding_bottom': '#3fb950', 'ascending_triangle': '#bc8cff', 'descending_triangle': '#f85149', 'symmetrical_triangle': '#d29922', 'horizontal_resistance_break': '#f85149', 'horizontal_support_break': '#3fb950', 'uptrend_break': '#f85149', 'downtrend_break': '#3fb950', 'triangle_break': '#bc8cff', 'harmonic_bull': '#3fb950', 'harmonic_bear': '#f85149' }; const color = colors[pattern.type] || '#58a6ff'; if (pattern.type === 'rounding_bottom') { const midIndex = Math.floor(displayKlines.length / 2); const startX = indexToX(0), midX = indexToX(midIndex), endX = indexToX(displayKlines.length - 1); const startY = priceToY(highs[0]); const midY = priceToY(Math.min(...lows.slice(midIndex-5, midIndex+5))) + 10; const endY = priceToY(closes[closes.length-1]); svg += `<path d="M ${startX} ${startY} Q${midX} ${midY}${endX} ${endY}" fill="none" stroke="${color}" stroke-width="2" stroke-dasharray="4,2"/>`; svg += `<circle cx="${endX}" cy="${endY}" r="4" fill="${color}" opacity="0.8"/>`; } else if (pattern.type.includes('horizontal')) { const levelPrice = pattern.description.match(/\$([0-9.]+)/); if (levelPrice) { const levelY = priceToY(parseFloat(levelPrice[1])); svg += `<line x1="${padding.left}" y1="${levelY}" x2="${chartWidth - padding.right}" y2="${levelY}" stroke="${color}" stroke-width="2" stroke-dasharray="6,3"/>`; svg += `<text x="${chartWidth - padding.right - 5}" y="${levelY - 5}" fill="${color}" font-size="9" text-anchor="end" font-weight="bold">${fmtPrice(parseFloat(levelPrice[1]))}</text>`; } } else if (pattern.type.includes('triangle')) { const firstHigh = highs[0], lastHigh = Math.max(...highs.slice(-5)); const firstLow = lows[0], lastLow = Math.min(...lows.slice(-5)); const x1 = indexToX(0), x2 = indexToX(displayKlines.length - 1); svg += `<line x1="${x1}" y1="${priceToY(firstHigh)}" x2="${x2}" y2="${priceToY(lastHigh)}" stroke="${color}" stroke-width="1.5" stroke-dasharray="3,2"/>`; svg += `<line x1="${x1}" y1="${priceToY(firstLow)}" x2="${x2}" y2="${priceToY(lastLow)}" stroke="${color}" stroke-width="1.5" stroke-dasharray="3,2"/>`; } else if (pattern.type.includes('trend')) { const trendlines = detectTrendlines(klines); if (pattern.direction === 'DUMP' && trendlines.uptrend) { const x1 = indexToX(0), x2 = indexToX(displayKlines.length - 1); svg += `<line x1="${x1}" y1="${priceToY(trendlines.uptrend.value * 0.98)}" x2="${x2}" y2="${priceToY(trendlines.uptrend.value * 1.02)}" stroke="${color}" stroke-width="2" stroke-dasharray="5,3"/>`; } else if (pattern.direction === 'PUMP' && trendlines.downtrend) { const x1 = indexToX(0), x2 = indexToX(displayKlines.length - 1); svg += `<line x1="${x1}" y1="${priceToY(trendlines.downtrend.value * 1.02)}" x2="${x2}" y2="${priceToY(trendlines.downtrend.value * 0.98)}" stroke="${color}" stroke-width="2" stroke-dasharray="5,3"/>`; } } else if (pattern.type.includes('harmonic')) { if (pattern.targetPrice) { const targetY = priceToY(pattern.targetPrice); svg += `<line x1="${padding.left}" y1="${targetY}" x2="${chartWidth - padding.right}" y2="${targetY}" stroke="${color}" stroke-width="2" stroke-dasharray="4,2"/>`; svg += `<text x="${chartWidth - padding.right - 5}" y="${targetY - 5}" fill="${color}" font-size="9" text-anchor="end" font-weight="bold">PRZ: ${fmtPrice(pattern.targetPrice)}</text>`; } } }); }
+const lastPrice = closes[closes.length - 1]; const lastPriceY = priceToY(lastPrice); const lastPriceColor = direction === 'PUMP' ? '#3fb950' : '#f85149';
+svg += `<line x1="${padding.left}" y1="${lastPriceY}" x2="${chartWidth - padding.right}" y2="${lastPriceY}" stroke="${lastPriceColor}" stroke-width="1" stroke-dasharray="2,2" opacity="0.6"/>`;
+svg += `<text x="${padding.left + 2}" y="${lastPriceY - 3}" fill="${lastPriceColor}" font-size="8" font-weight="bold">${fmtPrice(lastPrice)}</text>`;
+svg += `</svg>`; return svg;
+}
+function renderSignalCard(c, i, isDump) {
+const cardClass = isDump ? 'dump-card' : 'pump-card'; const dirClass = isDump ? 'short' : 'long'; const dirLabel = isDump ? 'SHORT' : 'LONG'; const dirIcon = isDump ? '🔴' : '🟢'; const scoreClass = isDump ? 'dump-score' : ''; const tfLabel = safeValue('timeframe', '5m'); const rankEmoji = i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : ''));
+let exchangeBadgeHtml = ''; if (c.exchanges && c.exchanges.length === 2) exchangeBadgeHtml = '<span class="exchange-badge badge-both">BN+BY</span>'; else if (c.exchanges && c.exchanges.includes('Binance')) exchangeBadgeHtml = '<span class="exchange-badge badge-binance">BN</span>'; else if (c.exchanges && c.exchanges.includes('Bybit')) exchangeBadgeHtml = '<span class="exchange-badge badge-bybit">BY</span>';
+const expClass = isDump ? 'down' : 'up'; const expSign = isDump ? '-' : '+'; const expArrow = isDump ? '📉' : '📈'; const confidenceLabel = c.confidence === 'GÜÇLÜ' ? '🔥' : '⚠️';
+const liq = c.liqData || { lsGlobal: 0.5, taker: 0.5 };
+const liqBadge = liq.lsGlobal > 0.7 ? '<span style="background:rgba(248,81,73,0.2);color:#f85149;padding:2px 6px;border-radius:3px;font-size:10px;">LONG BİRİKİM</span>' : (liq.lsGlobal < 0.3 ? '<span style="background:rgba(63,185,80,0.2);color:#3fb950;padding:2px 6px;border-radius:3px;font-size:10px;">SHORT BİRİKİM</span>' : '');
+const isSmartSignal = c.smartPatterns && c.smartPatterns.length > 0; const isBlocked = c.isBlocked;
+const smartBadge = isSmartSignal ? '<span class="smart-pattern-badge">🦇 HARMONİK/PINE</span>' : ''; const blockedBadge = isBlocked ? '<span class="blocked-badge">🚫 ENGELLENDİ</span>' : '';
+const smartBorder = isSmartSignal ? 'border: 2px solid #FFD700; box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);' : ''; const blockedBorder = isBlocked ? 'border: 2px solid #f85149; opacity: 0.5;' : '';
+const patternDetail = isSmartSignal ? `<div class="pattern-detail"><strong>🦇 AI Tespitleri:</strong><br>${c.smartPatterns.map(p => `• ${p.description}`).join('<br>')}</div>` : '';
+const patternChart = c.klines ? generatePatternChart(c.klines, c.smartPatterns, c.direction) : '';
+const chartSection = patternChart ? `<div class="signal-chart"><div class="signal-chart-title">📊 Formasyon Grafiği (Son 30 Mum)</div><div style="overflow-x:auto;">${patternChart}</div></div>` : '';
+const priceBoxHtml = `<div style="text-align:right;">
+<div style="background:#161b22;padding:10px 12px;border-radius:8px;border:1px solid #30363d;min-width:170px;">
+<div style="font-size:9px;color:#8b949e;margin-bottom:6px;font-weight:bold;">${expArrow} HEDEF: <span style="color:${expClass === 'up' ? '#3fb950' : '#f85149'};font-size:13px;">${expSign}${c.expectation.expectation}</span></div>
+<div style="font-size:11px;color:#c9d1d9;line-height:1.7;">
+<div style="padding:2px 0;border-bottom:1px solid #21262d;">📥 <b style="color:#58a6ff;">GİRİŞ:</b> ${fmtPrice(c.price)}</div>
+<div style="padding:2px 0;border-bottom:1px solid #21262d;">🎯 <b style="color:#3fb950;">TP1:</b> ${c.expectation.tp1} <span style="color:#8b949e;">(+${c.expectation.tp1Pct})</span></div>
+<div style="padding:2px 0;border-bottom:1px solid #21262d;">🎯 <b style="color:#58a6ff;">TP2:</b> ${c.expectation.tp2} <span style="color:#8b949e;">(+${c.expectation.tp2Pct})</span></div>
+<div style="padding:2px 0;border-bottom:1px solid #21262d;">🏆 <b style="color:#d29922;">TP3:</b> ${c.expectation.tp3} <span style="color:#8b949e;">(+${c.expectation.tp3Pct})</span></div>
+<div style="padding:2px 0;">🛑 <b style="color:#f85149;">STOP:</b> ${c.expectation.stopLoss} <span style="color:#8b949e;">(-${c.expectation.slPct})</span></div>
+</div>
+<div style="margin-top:6px;font-size:9px;color:#8b949e;">R:R <span style="color:${c.expectation.rrValid ? '#3fb950' : '#f85149'};font-weight:bold;">${c.expectation.rrText}${c.expectation.rrValid ? '✓' : '❌'}</span></div>
+</div>
+<div style="margin-top:8px;">
+<div class="score-display ${scoreClass}">${c.baseScore}/100</div>
+<div style="width:100px;height:5px;background:#21262d;border-radius:3px;overflow:hidden;margin-top:3px;">
+<div style="height:100%;width:${c.baseScore}\%;background:${isDump ? 'linear-gradient(90deg,#da3633,#f85149)' : 'linear-gradient(90deg,#238636,#3fb950)'};border-radius:3px;"></div>
+</div></div></div>`;
+return `<div class="signal-card ${cardClass} ${isSmartSignal ? 'smart-pattern-card' : ''} ${isBlocked ? 'blocked-card' : ''}" style="${smartBorder}${blockedBorder}">
+<div class="card-header">
+<div>${rankEmoji ? `<span style="font-size:20px;">${rankEmoji}</span>` : ''}<span class="coin-symbol">${c.symbol.replace('USDT','')}</span>${exchangeBadgeHtml}<span class="direction-badge ${dirClass}">${dirLabel} ${dirIcon}${confidenceLabel}</span><span style="background:#30363d;padding:3px 8px;border-radius:4px;font-size:11px;">${tfLabel}</span><span class="strategy-badge ${c.strategy || 'scalping'}">${c.strategy || 'scalping'}</span></span>${liqBadge}${smartBadge}${blockedBadge}</div>${priceBoxHtml}
+</div>
+${patternDetail}${chartSection}
+<div class="checklist">${c.checklist.map(item => { const iconMap = { pass: '✅', warn: '⚠️', fail: '❌', info: 'ℹ️', bot: '🤖' }; return `<div class="check-item"><span><span class="check-icon ${item.icon}">${iconMap[item.icon] || '•'}</span><span>${item.text}</span></span><span style="color:${item.aligns ? '#3fb950' : (item.score < item.max * 0.5 ? '#f85149' : '#8b949e')};font-size:10px;font-weight:bold;">(${item.score}/${item.max})</span></div>`; }).join('')}</div>
+${c.warnings.length > 0 ? `<div class="warnings">${c.warnings.map(w => `<div class="warning-item ${w.type}"><span>${w.text}</span></div>`).join('')}</div>` : ''}
+${(c.advanced && c.advanced.advWarnings.length > 0) ? `<div class="warnings">${c.advanced.advWarnings.map(w => `<div class="warning-item ${w.type}"><span>${w.text}</span></div>`).join('')}</div>` : ''}
+${c.advanced ? `<div class="adv-section"><div class="adv-header"><span class="adv-title">🎯 GELİŞMİŞ TEYİT</span><span class="adv-grade ${c.advanced.grade.cls}">${c.advanced.grade.label} ${c.advanced.advScore}/100</span></div><div class="adv-bar"><div class="adv-bar-fill" style="width:${c.advanced.advScore}%;background:${c.advanced.advScore >= 65 ? '#3fb950' : (c.advanced.advScore >= 45 ? '#d29922' : '#f85149')}"></div></div>${c.advanced.advChecks.map(ch => `<div class="check-item"><span><span class="check-icon ${ch.score >= ch.max * 0.7 ? 'pass' : (ch.score >= ch.max * 0.4 ? 'warn' : 'fail')}">${ch.score >= ch.max * 0.7 ? '✅' : (ch.score >= ch.max * 0.4 ? '⚠️' : '❌')}</span><span><strong>${ch.title}</strong>${ch.detail}</span></span><span style="color:${ch.score >= ch.max * 0.5 ? '#3fb950' : '#f85149'};font-size:10px;font-weight:bold;">(${ch.score}/${ch.max})</span></div>`).join('')}<div class="adv-final">🎖️ Birleşik: <b>${c.advanced.finalScore}/100</b></div></div>` : ''}
+<div class="reason-section"><div class="reason-title">📝 Neden:</div><div class="reason-text">${c.reasonText}</div></div>${c.liqZones && (c.liqZones.longPools.length > 0 || c.liqZones.shortPools.length > 0) ? `<div class="liq-warning-box"><strong>🌊 ${c.symbol.replace('USDT','')} Likidite Bölgeleri:</strong><br>${c.liqZones.longPools.length > 0 ? `🟢 Long Pool: ${fmtPrice(c.liqZones.longPools[0].mid)} (${fmt(((c.price - c.liqZones.longPools[0].mid)/c.price)*100, 2)}% aşağıda) - 💰 ${fmtVol(c.liqZones.longPools[0].volume * c.liqZones.longPools[0].mid)} @${fmtPrice(c.liqZones.longPools[0].mid)}` : ''}${c.liqZones.shortPools.length > 0 ? `<br>🔴 Short Pool: ${fmtPrice(c.liqZones.shortPools[0].mid)} (${fmt(((c.liqZones.shortPools[0].mid - c.price)/c.price)*100, 2)}% yukarıda) - 💰 ${fmtVol(c.liqZones.shortPools[0].volume * c.liqZones.shortPools[0].mid)} @${fmtPrice(c.liqZones.shortPools[0].mid)}` : ''}</div>` : ''}
+<div class="footer-info">
+<span>Fiyat <span class="val">${fmtPrice(c.price)}</span></span>
+<span>Mum: <span class="val ${c.lastCandleChange >= 0 ? 'green' : 'red'}">${c.lastCandleChange >= 0 ? '+' : ''}${fmt(c.lastCandleChange, 2)}%</span></span>
+<span>TP1: <span class="val ${isDump ? 'red' : 'green'}">${c.expectation.tp1}</span></span>
+<span>ZK: <span class="val red">${c.expectation.stopLoss}</span></span>
+<span>RSI <span style="color:${c.rsi > 70 ? '#f85149' : (c.rsi < 30 ? '#3fb950' : '#c9d1d9')};font-weight:bold;">${fmt(c.rsi, 0)}</span></span>
+<span>ADX ${fmt(c.adx, 1)}</span>
+<span>Hacim ${fmt(c.volMult, 1)}×</span>
+<span>LS ${fmt(liq.lsGlobal, 2)}</span>
+<span>R:R <span class="val ${c.expectation.rrValid ? 'green' : 'red'}">${c.expectation.rrText}${c.expectation.rrValid ? '✓' : ''}</span></span>
+</div></div>`;
+}
+function renderTradeCard(c, rank) {
+const isPump = c.direction === 'PUMP'; if (!isPump && c.direction !== 'DUMP') return '';
+const cardClass = isPump ? 'pump-trade' : 'dump-trade'; const dirClass = isPump ? 'long' : 'short'; const dirLabel = isPump ? 'LONG 🟢' : 'SHORT 🔴'; const scoreClass = isPump ? 'pump' : 'dump';
+const rankBadge = rank === 1 ? '🥇 ' : (rank === 2 ? '🥈 ' : (rank === 3 ? '🥉 ' : `#${rank} `));
+let exchangeBadgeHtml = ''; if (c.exchanges && c.exchanges.length === 2) exchangeBadgeHtml = '<span class="exchange-badge badge-both">BN+BY</span>'; else if (c.exchanges && c.exchanges.includes('Binance')) exchangeBadgeHtml = '<span class="exchange-badge badge-binance">BN</span>'; else if (c.exchanges && c.exchanges.includes('Bybit')) exchangeBadgeHtml = '<span class="exchange-badge badge-bybit">BY</span>';
+const riskPercent = 2; const positionSize = (riskPercent / parseFloat(c.expectation.slPct)).toFixed(1);
+let strategy = ''; if (isPump) { if (c.confidence === 'GÜÇLÜ' && c.baseScore >= 75) strategy = 'FUTURES LONG: Kademeli giriş, TP1\'de %50 kapat.'; else if (c.confidence === 'GÜÇLÜ') strategy = 'FUTURES LONG pozisyon aç.'; else strategy = 'Zayıf sinyal. Bekle.'; } else { if (c.confidence === 'GÜÇLÜ' && c.baseScore >= 75) strategy = 'FUTURES SHORT: Kademeli giriş, TP1\'de %50 kapat.'; else if (c.confidence === 'GÜÇLÜ') strategy = 'FUTURES SHORT pozisyon aç.'; else strategy = 'Zayıf sinyal. Bekle.'; }
+const liq = c.liqData || { lsGlobal: 0.5, taker: 0.5 };
+const liqWarning = liq.lsGlobal > 0.7 ? `<br><br><strong style="color:#f85149">🔴 ${c.symbol.replace('USDT','')} LONG BİRİKİMİ (${fmt(liq.lsGlobal,2)}) - Dikkat!</strong>` : (liq.lsGlobal < 0.3 ? `<br><br><strong style="color:#3fb950">🟢 ${c.symbol.replace('USDT','')} SHORT BİRİKİMİ (${fmt(liq.lsGlobal,2)}) - Fırsat!</strong>` : '');
+const rrClass = c.expectation.rrValid ? '' : 'bad';
+const rrWarning = !c.expectation.rrValid ? `<div class="rr-warning">⚠️ UYARI: R:R oranı 1:${CONFIG.MIN_RR_RATIO} altında! (${c.expectation.rrText})</div>` : '';
+const isSmartSignal = c.smartPatterns && c.smartPatterns.length > 0;
+const smartPatternHtml = isSmartSignal ? `<div class="pattern-detail"><strong>🦇 AI Tespitleri:</strong><br>${c.smartPatterns.map(p => `• ${p.description}`).join('<br>')}</div>` : '';
+const patternChart = c.klines ? generatePatternChart(c.klines, c.smartPatterns, c.direction) : '';
+const chartSection = patternChart ? `<div class="trade-chart"><div class="trade-chart-title">📊 Formasyon Grafiği (Son 30 Mum)</div><div style="overflow-x:auto;">${patternChart}</div></div>` : '';
+return `<div class="trade-card ${cardClass} ${!c.expectation.rrValid ? 'bad-rr' : ''} ${isSmartSignal ? 'smart-signal' : ''}"><div class="trade-header"><div class="trade-coin">${rankBadge}${c.symbol.replace('USDT','')}${exchangeBadgeHtml}<span class="trade-direction ${dirClass}">${dirLabel}</span>${c.advanced ? `<span class="adv-grade ${c.advanced.grade.cls}">${c.advanced.grade.label} ${c.advanced.advScore}</span>` : ''}${isSmartSignal ? '<span class="smart-pattern-badge">🦇 HARMONİK/PINE</span>' : ''}</div><div style="text-align:right;"><div class="trade-score ${scoreClass}">${c.baseScore}/100</div>${c.advanced ? `<div style="font-size:10px;color:#8b949e;">Birleşik: <b style="color:#58a6ff;">${c.advanced.finalScore}</b></div>` : ''}</div></div><div class="trade-details"><div class="trade-detail entry"><div class="td-label">📥 GİRİŞ</div><div class="td-value">${fmtPrice(c.price)}</div></div><div class="trade-detail stop"><div class="td-label">🛑 STOP</div><div class="td-value" style="color:#f85149">${c.expectation.stopLoss} (-${c.expectation.slPct})</div></div><div class="trade-detail tp1"><div class="td-label">🎯 TP1</div><div class="td-value" style="color:#3fb950">${c.expectation.tp1} (+${c.expectation.tp1Pct})</div></div><div class="trade-detail tp2"><div class="td-label">🎯 TP2</div><div class="td-value" style="color:#58a6ff">${c.expectation.tp2} (+${c.expectation.tp2Pct})</div></div><div class="trade-detail tp3"><div class="td-label">🏆 TP3</div><div class="td-value" style="color:#d29922">${c.expectation.tp3} (+${c.expectation.tp3Pct})</div></div><div class="trade-detail rr ${rrClass}"><div class="td-label">📊 R:R</div><div class="td-value" style="color:${c.expectation.rrValid ? '#bc8cff' : '#f85149'}">${c.expectation.rrText} ${!c.expectation.rrValid ? '❌' : '✓'}</div></div></div>${rrWarning}${smartPatternHtml}${chartSection}<div class="trade-reason"><strong>📝 Neden:</strong> ${c.reasonText}<br><br><strong>💡 Strateji:</strong> ${strategy}<br><br><strong>📐 Pozisyon:</strong> \%${riskPercent} risk ile ${positionSize}x${c.advanced ? `<br><br><strong>🚀 Teyit:</strong> ${c.advanced.grade.label} (${c.advanced.advScore}/100)` : ''}${liqWarning}</div>${(c.warnings.length > 0 || (c.advanced && c.advanced.advWarnings.length > 0)) ? `<div class="trade-warnings"><strong>⚠️ Uyarılar:</strong><ul>${c.warnings.map(w => `<li>${w.text}</li>`).join('')} ${(c.advanced ? c.advanced.advWarnings : []).map(w => `<li>${w.text}</li>`).join('')}</ul></div>` : ''}</div>`;
+}
+function renderVolumeCard(d, i) {
+const volMult = d.volMult; const lastCandleChange = d.lastCandleChange; const isBullishCandle = lastCandleChange > 0;
+let anomalyLevel, anomalyClass; if (volMult >= 5) { anomalyLevel = 'AŞIRI'; anomalyClass = 'anomaly-extreme'; } else if (volMult >= 3) { anomalyLevel = 'YÜKSEK'; anomalyClass = 'anomaly-high'; } else if (volMult >= 1.5) { anomalyLevel = 'ORTA'; anomalyClass = 'anomaly-moderate'; } else { anomalyLevel = 'NORMAL'; anomalyClass = 'anomaly-moderate'; }
+let isNeedle = false, needleType = ''; if (d.isLongLowerWick) { isNeedle = true; needleType = 'LONG TASFİYE'; anomalyClass = 'anomaly-extreme'; anomalyLevel = 'İĞNE'; } else if (d.isLongUpperWick) { isNeedle = true; needleType = 'SHORT TASFİYE'; anomalyClass = 'anomaly-extreme'; anomalyLevel = 'İĞNE'; }
+let comment = '', commentClass = ''; if (isNeedle && d.isLongLowerWick) { comment = `⚡ ${needleType}!${fmt(lastCandleChange,2)}%`; commentClass = 'bearish-comment'; } else if (isNeedle && d.isLongUpperWick) { comment = `🔴 ${needleType}!${fmt(lastCandleChange,2)}%`; commentClass = 'bullish-comment'; } else if (isBullishCandle && volMult > 3) { comment = `🔥 AŞIRI alım! +${fmt(lastCandleChange,2)}%`; commentClass = 'bullish-comment'; } else if (isBullishCandle && volMult > 1.5) { comment = `📈 Yükselen hacim + YEŞİL`; commentClass = 'bullish-comment'; } else if (!isBullishCandle && volMult > 3) { comment = `💥 AŞIRI satış! ${fmt(lastCandleChange,2)}%`; commentClass = 'bearish-comment'; } else if (!isBullishCandle && volMult > 1.5) { comment = `📉 Yükselen hacim + KIRMIZI`; commentClass = 'bearish-comment'; } else { comment = `😐 Normal hacim.`; }
+const barPercent = Math.min(100, (volMult / 10) * 100); const barClass = isNeedle ? 'up' : (isBullishCandle ? 'up' : 'down'); const multClass = isNeedle ? 'up' : (isBullishCandle ? 'up' : 'down'); const arrow = isNeedle ? '⚡' : (isBullishCandle ? '📈' : '📉');
+const tfLabel = safeValue('timeframe', '5m'); const rankClass = i === 0 ? 'top1' : (i === 1 ? 'top2' : (i === 2 ? 'top3' : ''));
+let exchangeBadgeHtml = ''; if (d.exchanges && d.exchanges.length === 2) exchangeBadgeHtml = '<span class="exchange-badge badge-both">BN+BY</span>'; else if (d.exchanges && d.exchanges.includes('Binance')) exchangeBadgeHtml = '<span class="exchange-badge badge-binance">BN</span>'; else if (d.exchanges && d.exchanges.includes('Bybit')) exchangeBadgeHtml = '<span class="exchange-badge badge-bybit">BY</span>';
+return `<div class="volume-card ${isNeedle ? 'bullish' : (isBullishCandle ? 'bullish' : 'bearish')}"><div class="vol-header"><div class="vol-coin"><span class="vol-rank ${rankClass}">${i+1}</span><span class="vol-name">${d.symbol.replace('USDT','')}</span>${exchangeBadgeHtml}<span style="background:#30363d;padding:2px 6px;border-radius:4px;font-size:10px;">${tfLabel}</span><span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:bold;${anomalyClass === 'anomaly-extreme' ? 'background:#da3633;color:white;' : (anomalyClass === 'anomaly-high' ? 'background:#d29922;color:#0d1117;' : 'background:#30363d;color:#c9d1d9;')}">${anomalyLevel}</span></div><div style="text-align:right;"><div class="vol-mult-value ${multClass}">${fmt(volMult, 2)}×</div><div class="vol-mult-label">${arrow} Hacim</div></div></div><div class="vol-stats"><div class="vol-stat"><div class="vs-label">Son Mum</div><div class="vs-value" style="color:${lastCandleChange >= 0 ? '#3fb950' : '#f85149'}">${lastCandleChange >= 0 ? '+' : ''}${fmt(lastCandleChange, 2)}%</div></div><div class="vol-stat"><div class="vs-label">Fiyat</div><div class="vs-value">${fmtPrice(d.price)}</div></div><div class="vol-stat"><div class="vs-label">RSI</div><div class="vs-value" style="color:${d.rsi > 70 ? '#f85149' : (d.rsi < 30 ? '#3fb950' : '#f0f6fc')}">${fmt(d.rsi, 0)}</div></div></div><div style="margin-bottom:6px;"><div style="display:flex;justify-content:space-between;font-size:10px;color:#8b949e;margin-bottom:3px;"><span>Ort. Hacme Göre</span></div><div class="vol-bar"><div class="vol-bar-fill ${barClass}" style="width:${barPercent}%"></div></div></div><div class="vol-comment ${commentClass}">${comment}</div></div>`;
+}
+async function fetchLiquidityData(symbol) { const [lsGlobal, lsTop, takerRatio] = await Promise.all([ fetchJSON(`${CONFIG.apiBinanceFutures}/futures/data/globalLongShortAccountRatio?symbol=${symbol}&period=5m&limit=10`), fetchJSON(`${CONFIG.apiBinanceFutures}/futures/data/topLongShortAccountRatio?symbol=${symbol}&period=5m&limit=10`), fetchJSON(`${CONFIG.apiBinanceFutures}/futures/data/takerlongshortratio?symbol=${symbol}&period=5m&limit=10`) ]); const lsGlobalVal = lsGlobal && lsGlobal.length > 0 ? parseFloat(lsGlobal[lsGlobal.length-1].longShortRatio) : 0.5; const lsTopVal = lsTop && lsTop.length > 0 ? parseFloat(lsTop[lsTop.length-1].longShortRatio) : 0.5; const takerVal = takerRatio && takerRatio.length > 0 ? parseFloat(takerRatio[takerRatio.length-1].buySellRatio) : 0.5; return { lsGlobal: lsGlobalVal, lsTop: lsTopVal, taker: takerVal }; }
+function linearRegression(points) { const n = points.length; if (n < 2) return null; let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0; for (let i = 0; i < n; i++) { sumX += points[i].x; sumY += points[i].y; sumXY += points[i].x * points[i].y; sumXX += points[i].x * points[i].x; } const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX); const intercept = (sumY - slope * sumX) / n; return { slope, intercept }; }
+function detectTrendlines(klines, lookback = CONFIG.PATTERN_LOOKBACK) { if (!klines || klines.length < lookback) return { uptrend: null, downtrend: null }; const recent = klines.slice(-lookback); const lows = recent.map((k, i) => ({ x: i, y: parseFloat(k[3]) })); const sortedLows = [...lows].sort((a, b) => a.y - b.y); const bottomLows = sortedLows.slice(0, Math.min(5, Math.floor(lookback / 4))); const highs = recent.map((k, i) => ({ x: i, y: parseFloat(k[2]) })); const sortedHighs = [...highs].sort((a, b) => b.y - a.y); const topHighs = sortedHighs.slice(0, Math.min(5, Math.floor(lookback / 4))); let uptrend = null, downtrend = null; if (bottomLows.length >= 2) { const reg = linearRegression(bottomLows); if (reg && reg.slope > 0) { const lastIdx = lookback - 1; const trendValue = reg.slope * lastIdx + reg.intercept; const lastLow = parseFloat(recent[recent.length-1][3]); const distance = Math.abs(lastLow - trendValue) / trendValue * 100; if (distance < 2) uptrend = { slope: reg.slope, intercept: reg.intercept, value: trendValue, touches: bottomLows.length }; } } if (topHighs.length >= 2) { const reg = linearRegression(topHighs); if (reg && reg.slope < 0) { const lastIdx = lookback - 1; const trendValue = reg.slope * lastIdx + reg.intercept; const lastHigh = parseFloat(recent[recent.length-1][2]); const distance = Math.abs(lastHigh - trendValue) / trendValue * 100; if (distance < 2) downtrend = { slope: reg.slope, intercept: reg.intercept, value: trendValue, touches: topHighs.length }; } } return { uptrend, downtrend }; }
+function detectTriangles(klines, lookback = CONFIG.PATTERN_LOOKBACK) { if (!klines || klines.length < lookback) return null; const recent = klines.slice(-lookback); const highs = recent.map(k => parseFloat(k[2])); const lows = recent.map(k => parseFloat(k[3])); const firstHalfHighs = highs.slice(0, Math.floor(lookback/2)); const secondHalfHighs = highs.slice(Math.floor(lookback/2)); const firstHalfLows = lows.slice(0, Math.floor(lookback/2)); const secondHalfLows = lows.slice(Math.floor(lookback/2)); const maxHigh1 = Math.max(...firstHalfHighs); const maxHigh2 = Math.max(...secondHalfHighs); const minLow1 = Math.min(...firstHalfLows); const minLow2 = Math.min(...secondHalfLows); const highDecreasing = maxHigh2 < maxHigh1 * 0.995; const lowIncreasing = minLow2 > minLow1 * 1.005; const highFlat = Math.abs(maxHigh2 - maxHigh1) / maxHigh1 < 0.005; const lowFlat = Math.abs(minLow2 - minLow1) / minLow1 < 0.005; if (highDecreasing && lowIncreasing) return { type: 'symmetrical_triangle', strength: 3, description: 'Simetrik Üçgen' }; if (highFlat && lowIncreasing) return { type: 'ascending_triangle', strength: 3, description: 'Yükselen Üçgen' }; if (highDecreasing && lowFlat) return { type: 'descending_triangle', strength: 3, description: 'Alçalan Üçgen' }; return null; }
+function detectRoundingBottom(klines, lookback = 30) { if (!klines || klines.length < lookback) return null; const recent = klines.slice(-lookback); const lows = recent.map(k => parseFloat(k[3])); const closes = recent.map(k => parseFloat(k[4])); const firstHalf = lows.slice(0, Math.floor(lookback/2)); const secondHalf = lows.slice(Math.floor(lookback/2)); const firstHalfTrend = firstHalf[firstHalf.length-1] < firstHalf[0]; const secondHalfTrend = secondHalf[secondHalf.length-1] > secondHalf[0]; const minLow = Math.min(...lows); const minLowIndex = lows.indexOf(minLow); const isMiddle = minLowIndex > lookback * 0.3 && minLowIndex < lookback * 0.7; const currentClose = closes[closes.length-1]; const firstLow = firstHalf[0]; const breakout = currentClose > firstLow * 1.005; if (firstHalfTrend && secondHalfTrend && isMiddle && breakout) { return { type: 'rounding_bottom', direction: 'PUMP', strength: 4, description: `Yuvarlak Dip Kırılımı (${fmtPrice(firstLow)})`, entry: currentClose, target: currentClose * 1.05, stop: minLow * 0.99 }; } return null; }
+function detectHorizontalBreakout(klines, lookback = 30) { if (!klines || klines.length < lookback) return null; const recent = klines.slice(-lookback); const closes = recent.map(k => parseFloat(k[4])); const highs = recent.map(k => parseFloat(k[2])); const lows = recent.map(k => parseFloat(k[3])); const volumes = recent.map(k => parseFloat(k[5])); const currentPrice = closes[closes.length-1]; const currentVolume = volumes[volumes.length-1]; const avgVolume = volumes.slice(0, -1).reduce((a,b) => a+b, 0) / (volumes.length-1); const volumeSpike = currentVolume > avgVolume * 1.3; const levels = []; for (let i = 0; i < recent.length; i++) { const high = highs[i]; const low = lows[i]; const mid = (high + low) / 2; let touchCount = 0; for (let j = 0; j < recent.length; j++) { const h = highs[j]; const l = lows[j]; if (Math.abs(h - mid) / mid < 0.003 || Math.abs(l - mid) / mid < 0.003) touchCount++; } if (touchCount >= 3) levels.push({ price: mid, touches: touchCount, type: mid > currentPrice ? 'resistance' : 'support' }); } levels.sort((a, b) => b.touches - a.touches); const breakouts = []; const resistance = levels.find(l => l.type === 'resistance' && l.touches >= 3); if (resistance && currentPrice > resistance.price * 1.005 && volumeSpike) { breakouts.push({ type: 'horizontal_resistance_break', direction: 'PUMP', strength: 4, description: `Yatay Direnç Kırılımı (${fmtPrice(resistance.price)}) -${resistance.touches}x dokunma`, entry: currentPrice, target: currentPrice * 1.03, stop: resistance.price * 0.99 }); } const support = levels.find(l => l.type === 'support' && l.touches >= 3); if (support && currentPrice < support.price * 0.995 && volumeSpike) { breakouts.push({ type: 'horizontal_support_break', direction: 'DUMP', strength: 4, description: `Yatay Destek Kırılımı (${fmtPrice(support.price)}) -${support.touches}x dokunma`, entry: currentPrice, target: currentPrice * 0.97, stop: support.price * 1.01 }); } return breakouts.length > 0 ? breakouts : null; }
+function detectAllSmartPatterns(klines) { const patterns = []; const roundingBottom = detectRoundingBottom(klines); if (roundingBottom) patterns.push(roundingBottom); const horizontalBreakouts = detectHorizontalBreakout(klines); if (horizontalBreakouts) patterns.push(...horizontalBreakouts); const triangle = detectTriangles(klines); if (triangle) { const recent = klines.slice(-5); const currentPrice = parseFloat(recent[recent.length-1][4]); const recentHighs = recent.map(k => parseFloat(k[2])); const recentLows = recent.map(k => parseFloat(k[3])); const maxHigh = Math.max(...recentHighs); const minLow = Math.min(...recentLows); if (triangle.type === 'ascending_triangle' && currentPrice > maxHigh) patterns.push({ type: 'triangle_break', direction: 'PUMP', strength: 4, description: `Yükselen Üçgen Yukarı Kırılım` }); if (triangle.type === 'descending_triangle' && currentPrice < minLow) patterns.push({ type: 'triangle_break', direction: 'DUMP', strength: 4, description: `Alçalan Üçgen Aşağı Kırılım` }); } const trendlines = detectTrendlines(klines); if (trendlines.uptrend) { const currentPrice = parseFloat(klines[klines.length-1][4]); if (currentPrice < trendlines.uptrend.value * 0.998) patterns.push({ type: 'uptrend_break', direction: 'DUMP', strength: 3, description: `Yükselen Trend Kırılımı` }); } if (trendlines.downtrend) { const currentPrice = parseFloat(klines[klines.length-1][4]); if (currentPrice > trendlines.downtrend.value * 1.002) patterns.push({ type: 'downtrend_break', direction: 'PUMP', strength: 3, description: `Düşen Trend Kırılımı` }); } return patterns.length > 0 ? patterns : null; }
+function analyzeLiquidityZones(klines, symbol) { if (!klines || klines.length < 20) return { longPools: [], shortPools: [] }; const zones = []; const n = klines.length; for (let i = Math.max(0, n - 30); i < n; i++) { const high = parseFloat(klines[i][2]); const low = parseFloat(klines[i][3]); const volume = parseFloat(klines[i][5]); zones.push({ high, low, volume, index: i }); } const pools = []; const processed = new Set(); for (let i = 0; i < zones.length; i++) { if (processed.has(i)) continue; let poolHigh = zones[i].high, poolLow = zones[i].low, poolVolume = zones[i].volume, poolCount = 1; processed.add(i); for (let j = i + 1; j < zones.length; j++) { if (processed.has(j)) continue; if (Math.abs(zones[j].high - poolHigh) / poolHigh < 0.015 || Math.abs(zones[j].low - poolLow) / poolLow < 0.015) { poolHigh = Math.max(poolHigh, zones[j].high); poolLow = Math.min(poolLow, zones[j].low); poolVolume += zones[j].volume; poolCount++; processed.add(j); } } if (poolCount >= 2) pools.push({ high: poolHigh, low: poolLow, mid: (poolHigh + poolLow) / 2, volume: poolVolume, count: poolCount, strength: poolCount * (poolVolume / 1000000), symbol: symbol }); } pools.sort((a, b) => b.strength - a.strength); const currentPrice = parseFloat(klines[n-1][4]); return { longPools: pools.filter(p => p.mid < currentPrice).slice(0, 5), shortPools: pools.filter(p => p.mid > currentPrice).slice(0, 5) }; }
+function generateTopLiquidityAlerts(allCoinData) { const rawAlerts = []; allCoinData.forEach(d => { const liq = d.liqData; if (!liq) return; let liqScore = 0, alertText = '', type = 'warning', isUnusual = false; if (liq.lsGlobal > 0.80) { isUnusual = true; liqScore += 150 + (liq.lsGlobal * 100); alertText = `🔴 AŞIRI LONG BİRİKİMİ! LS: ${fmt(liq.lsGlobal, 2)} - DÜŞÜŞ RİSKİ!`; type = 'danger'; } else if (liq.lsGlobal < 0.20) { isUnusual = true; liqScore += 150 + ((1 - liq.lsGlobal) * 100); alertText = `🟢 AŞIRI SHORT BİRİKİMİ! LS: ${fmt(liq.lsGlobal, 2)} - YÜKSELİŞ FIRSATI!`; type = 'opportunity'; } else if (liq.lsGlobal > 0.70) { liqScore += 60 + (liq.lsGlobal * 100); alertText = `📈 Yüksek Long Birikimi. LS: ${fmt(liq.lsGlobal, 2)}`; type = 'warning'; } else if (liq.lsGlobal < 0.30) { liqScore += 60 + ((1 - liq.lsGlobal) * 100); alertText = `🟢 Yüksek Short Birikimi. LS: ${fmt(liq.lsGlobal, 2)}`; type = 'warning'; } if (d.liqZones && d.liqZones.longPools.length > 0) { const nearestLong = d.liqZones.longPools[0]; const distPct = ((d.price - nearestLong.mid) / d.price) * 100; if (distPct < 2.5) { liqScore += nearestLong.strength; if (nearestLong.strength > 100 || nearestLong.volume > 100000000) isUnusual = true; alertText += ` | LONG LİKİDİTESİ: ${fmtPrice(nearestLong.mid)} (${fmt(distPct,2)}% aşağıda) - MİKTAR: ${fmtVol(nearestLong.volume)} = 💰 ${fmtVol(nearestLong.volume * nearestLong.mid)}`; type = 'danger'; } } if (d.liqZones && d.liqZones.shortPools.length > 0) { const nearestShort = d.liqZones.shortPools[0]; const distPct = ((nearestShort.mid - d.price) / d.price) * 100; if (distPct < 2.5) { liqScore += nearestShort.strength; if (nearestShort.strength > 100 || nearestShort.volume > 100000000) isUnusual = true; alertText += ` | SHORT LİKİDİTESİ: ${fmtPrice(nearestShort.mid)} (${fmt(distPct,2)}% yukarıda) - MİKTAR: ${fmtVol(nearestShort.volume)} = 💰 ${fmtVol(nearestShort.volume * nearestShort.mid)}`; type = 'danger'; } } if (liqScore > 30) { if (isUnusual) alertText = "⚡ OLAĞAN DIŞI BİRİKME TESPİT EDİLDİ! " + alertText; rawAlerts.push({ coin: d.symbol, score: liqScore, text: alertText, type: type, isUnusual: isUnusual }); } }); return rawAlerts.sort((a, b) => b.score - a.score).slice(0, 15); }
+function calculateEMA(closes, period) { if (closes.length < period) return null; const k = 2 / (period + 1); let ema = closes.slice(0, period).reduce((a,b) => a+b, 0) / period; for (let i = period; i < closes.length; i++) ema = closes[i] * k + ema * (1 - k); return ema; }
+function calculateRSI(closes, period=14) { if (closes.length < period + 1) return 50; let gains = 0, losses = 0; for (let i = 1; i <= period; i++) { const c = closes[i] - closes[i-1]; if (c > 0) gains += c; else losses -= c; } let avgGain = gains / period, avgLoss = losses / period; for (let i = period + 1; i < closes.length; i++) { const c = closes[i] - closes[i-1]; avgGain = (avgGain * (period - 1) + (c > 0 ? c : 0)) / period; avgLoss = (avgLoss * (period - 1) + (c < 0 ? -c : 0)) / period; } if (avgLoss === 0) return 100; return 100 - (100 / (1 + avgGain / avgLoss)); }
+function calculateATR(klines, period=14) { if (klines.length < period) return 0; const trs = []; for (let i = 1; i < klines.length; i++) { const high = parseFloat(klines[i][2]), low = parseFloat(klines[i][3]), prevClose = parseFloat(klines[i-1][4]); trs.push(Math.max(high - low, Math.abs(high - prevClose), Math.abs(low - prevClose))); } return trs.slice(-period).reduce((a,b) => a+b, 0) / period; }
+function calculateEMAarray(closes, period) { if (closes.length < period) return []; const k = 2 / (period + 1); const emas = []; let ema = closes.slice(0, period).reduce((a,b) => a+b, 0) / period; emas[period-1] = ema; for (let i = period; i < closes.length; i++) { ema = closes[i] * k + ema * (1 - k); emas[i] = ema; } return emas; }
+function calculateMACD(closes, fast=12, slow=26, signal=9) { const ef = calculateEMAarray(closes, fast), es = calculateEMAarray(closes, slow); if (!ef.length || !es.length) return { histogram: 0, prevHist: 0, cross: 'NONE' }; const macdLine = []; for (let i = 0; i < closes.length; i++) if (ef[i] !== undefined && es[i] !== undefined) macdLine[i] = ef[i] - es[i]; const valid = macdLine.filter(v => v !== undefined); if (valid.length < signal + 2) return { histogram: 0, prevHist: 0, cross: 'NONE' }; const sk = 2 / (signal + 1); let sig = valid.slice(0, signal).reduce((a,b) => a+b, 0) / signal; const sigArr = []; for (let i = signal; i < valid.length; i++) { sig = valid[i] * sk + sig * (1 - sk); sigArr.push(sig); } const hist = valid[valid.length-1] - sigArr[sigArr.length-1]; const prevHist = valid[valid.length-2] - sigArr[sigArr.length-2]; let cross = 'NONE'; if (prevHist <= 0 && hist > 0) cross = 'BULLISH_CROSS'; else if (prevHist >= 0 && hist < 0) cross = 'BEARISH_CROSS'; return { histogram: hist, prevHist, cross }; }
+function calculateBollinger(closes, period=20, mult=2) { if (closes.length < period) return { percentB: 0.5, squeeze: false }; const slice = closes.slice(-period); const middle = slice.reduce((a,b) => a+b, 0) / period; const std = Math.sqrt(slice.map(c => (c-middle)**2).reduce((a,b) => a+b, 0) / period); const upper = middle + mult*std, lower = middle - mult*std; const price = closes[closes.length-1]; const percentB = (upper - lower) !== 0 ? (price - lower) / (upper - lower) : 0.5; let squeeze = false; if (closes.length >= period * 2) { let bwSum = 0, bwCount = 0; for (let i = period; i <= closes.length - period; i++) { const s = closes.slice(i - period, i); const m = s.reduce((a,b) => a+b, 0) / period; const sd = Math.sqrt(s.map(c => (c-m)**2).reduce((a,b) => a+b, 0) / period); if (m > 0) { bwSum += (4 * sd / m) * 100; bwCount++; } } const bw = middle > 0 ? (4 * std / middle) * 100 : 0; squeeze = bwCount > 0 && bw < (bwSum / bwCount) * 0.75; } return { percentB, squeeze }; }
+function calculateStochastic(klines, period=14) { if (klines.length < period) return { k: 50, d: 50 }; const raws = []; for (let i = period - 1; i < klines.length; i++) { const sl = klines.slice(i - period + 1, i + 1); const hh = Math.max(...sl.map(k => parseFloat(k[2]))); const ll = Math.min(...sl.map(k => parseFloat(k[3]))); const c = parseFloat(klines[i][4]); raws.push(hh !== ll ? ((c - ll) / (hh - ll)) * 100 : 50); } const kArr = []; for (let i = 2; i < raws.length; i++) kArr.push((raws[i] + raws[i-1] + raws[i-2]) / 3); const k = kArr[kArr.length-1] || 50; const d = kArr.length >= 3 ? (kArr[kArr.length-1] + kArr[kArr.length-2] + kArr[kArr.length-3]) / 3 : k; return { k, d }; }
+function calculateVWAP(klines) { let pv = 0, v = 0; klines.forEach(k => { const tp = (parseFloat(k[2]) + parseFloat(k[3]) + parseFloat(k[4])) / 3; const vol = parseFloat(k[5]); pv += tp * vol; v += vol; }); return v > 0 ? pv / v : null; }
+function calculateDeltaProxy(klines) { let buyFlow = 0, sellFlow = 0; for (let i = Math.max(0, klines.length - 10); i < klines.length; i++) { const h = parseFloat(klines[i][2]), l = parseFloat(klines[i][3]), c = parseFloat(klines[i][4]); const range = h - l; const pos = range > 0 ? (c - l) / range : 0.5; const vol = parseFloat(klines[i][5]); buyFlow += vol * pos; sellFlow += vol * (1 - pos); } return (buyFlow + sellFlow) > 0 ? (buyFlow / (buyFlow + sellFlow)) * 100 : 50; }
+function detectCandlePatterns(klines) { const patterns = []; const n = klines.length; if (n < 3) return patterns; const o1=parseFloat(klines[n-1][1]), h1=parseFloat(klines[n-1][2]), l1=parseFloat(klines[n-1][3]), c1=parseFloat(klines[n-1][4]); const o2=parseFloat(klines[n-2][1]), c2=parseFloat(klines[n-2][4]); const body1 = Math.abs(c1-o1), range1 = h1-l1; const upW1 = h1 - Math.max(o1,c1), loW1 = Math.min(o1,c1) - l1; if (c2 < o2 && c1 > o1 && c1 > o2 && o1 < c2 && body1 > Math.abs(c2-o2)) patterns.push({ name:'Boğa Yutan', type:'PUMP', strength:3 }); if (c2 > o2 && c1 < o1 && c1 < o2 && o1 > c2 && body1 > Math.abs(c2-o2)) patterns.push({ name:'Ayı Yutan', type:'DUMP', strength:3 }); if (range1 > 0 && loW1 > body1*2 && upW1 < body1*0.5 && body1 > 0) patterns.push({ name:'Çekiç', type:'PUMP', strength:2 }); if (range1 > 0 && upW1 > body1*2 && loW1 < body1*0.5 && body1 > 0) patterns.push({ name:'Kayan Yıldız', type:'DUMP', strength:2 }); if (range1 > 0 && body1 / range1 < 0.1) patterns.push({ name:'Doji', type:'NEUTRAL', strength:1 }); return patterns; }
+function calculateStreak(closes) { let streak = 0; for (let i = closes.length - 1; i > 0; i--) { const ch = closes[i] - closes[i-1]; if (streak === 0) { if (ch !== 0) streak = ch > 0 ? 1 : -1; } else if (streak > 0 && ch > 0) streak++; else if (streak < 0 && ch < 0) streak--; else break; } return streak; }
+function updateIndicatorPerformance(signal, result) { if (!signal || !signal.activeIndicators) return; signal.activeIndicators.forEach(indicator => { if (!learningData.indicatorPerformance[indicator]) learningData.indicatorPerformance[indicator] = { wins: 0, losses: 0, total: 0 }; learningData.indicatorPerformance[indicator].total++; if (result === 'WIN') learningData.indicatorPerformance[indicator].wins++; else if (result === 'LOSS') learningData.indicatorPerformance[indicator].losses++; }); Object.keys(learningData.indicatorPerformance).forEach(indicator => { const perf = learningData.indicatorPerformance[indicator]; if (perf.total >= 5) { const winRate = perf.wins / perf.total; if (winRate < 0.45) learningData.dynamicWeights[indicator] = 0.2; else if (winRate > 0.65) learningData.dynamicWeights[indicator] = Math.min(1.5, 0.5 + (winRate * 1.0)); else learningData.dynamicWeights[indicator] = 1.0; } }); }
+function updateStrategyPerformance(strategy, result, pnl) { if (!strategy || !learningData.strategyPerformance[strategy]) return; const perf = learningData.strategyPerformance[strategy]; if (result === 'WIN') { perf.wins++; perf.avgPnl = (perf.avgPnl * (perf.wins - 1) + pnl) / perf.wins; } else if (result === 'LOSS') { perf.losses++; } }
+function autoTuneParameters() { const resolved = learningData.signals.filter(s => s.result !== 'PENDING'); if (resolved.length < CONFIG.AUTO_TUNE_INTERVAL) return; const recent = resolved.slice(-CONFIG.AUTO_TUNE_INTERVAL); const winRate = recent.filter(s => s.result === 'WIN').length / recent.length; if (winRate < 0.4) { learningData.autoTunedParams.tp1Mult = Math.max(0.8, learningData.autoTunedParams.tp1Mult * 0.95); learningData.autoTunedParams.slMult = Math.min(8.0, learningData.autoTunedParams.slMult * 1.05); log(`🔧 Auto-tune: TP küçültüldü (${fmt(learningData.autoTunedParams.tp1Mult,2)}x), SL büyütüldü (${fmt(learningData.autoTunedParams.slMult,1)}x)`, 'warn'); } else if (winRate > 0.7) { learningData.autoTunedParams.tp1Mult = Math.min(2.0, learningData.autoTunedParams.tp1Mult * 1.05); log(`✅ Auto-tune: TP büyütüldü (${fmt(learningData.autoTunedParams.tp1Mult,2)}x)`, 'success'); } const breakoutPerf = learningData.strategyPerformance.breakout; const breakoutTotal = breakoutPerf.wins + breakoutPerf.losses; if (breakoutTotal >= 3) { const breakoutWR = breakoutPerf.wins / breakoutTotal; if (breakoutWR < 0.40 && !learningData.autoTunedParams.breakoutBanned) { learningData.autoTunedParams.breakoutBanned = true; log(`🚨 BREAKOUT YASAKLANDI!`, 'error'); } else if (breakoutWR > 0.60 && learningData.autoTunedParams.breakoutBanned) { learningData.autoTunedParams.breakoutBanned = false; log(`✅ BREAKOUT YASAĞI KALDIRILDI!`, 'success'); } } const strategies = Object.entries(learningData.strategyPerformance).filter(([k,v]) => v.wins + v.losses >= 3); if (strategies.length > 0) { const best = strategies.sort((a,b) => (b[1].wins / (b[1].wins + b[1].losses)) - (a[1].wins / (a[1].wins + a[1].losses)))[0]; if (best && best[0] !== 'breakout') { learningData.autoTunedParams.strategy = best[0]; log(`🏆 En iyi strateji: ${best[0].toUpperCase()}`, 'success'); } } learningData.lastAutoTune = Date.now(); saveLearningData(); }
+function getBestStrategy(adx, volMult, lsRatio, price, high20, low20, upperWickRatio, lowerWickRatio, rsi, direction, smartPatterns) { if (smartPatterns && smartPatterns.length > 0) { const hasPumpPattern = smartPatterns.some(p => p.direction === 'PUMP'); const hasDumpPattern = smartPatterns.some(p => p.direction === 'DUMP'); if (hasPumpPattern && direction === 'PUMP') return 'harmonic'; if (hasDumpPattern && direction === 'DUMP') return 'harmonic'; } if (learningData.autoTunedParams.breakoutBanned) return direction === 'PUMP' ? 'scalping' : 'swing'; if (direction === 'PUMP' && lowerWickRatio > 0.4) return 'scalping'; if (direction === 'DUMP' && upperWickRatio > 0.4) return 'scalping'; const isRealBreakout = (direction === 'PUMP' && price > high20 * 0.995) || (direction === 'DUMP' && price < low20 * 1.005); if (!isRealBreakout) return 'swing'; const isRsiTrap = (direction === 'PUMP' && rsi > 80) || (direction === 'DUMP' && rsi < 20); if (isRsiTrap) return 'scalping'; if (isRealBreakout && adx > 25 && volMult > 2.5 && !isRsiTrap) return 'breakout'; return 'swing'; }
+function isLateSignal(d, direction) { const closes = d.closes; if (!closes || closes.length < 10) return { isLate: false, movePercent: 0 }; const tf = safeValue('timeframe', '5m'); const thresholds = { '5m': 2.0, '15m': 5.0, '1h': 8.0, '4h': 12.0 }; const threshold = thresholds[tf] || 2.0; const price5Ago = closes[closes.length - 6]; const currentPrice = closes[closes.length - 1]; const movePercent = Math.abs((currentPrice - price5Ago) / price5Ago) * 100; if (movePercent > threshold) { log(`⚠️ ${d.symbol} geç sinyal! Son 5 mumda %${fmt(movePercent,2)} hareket (>${threshold}%). YÜKSEK RİSK!`, 'warn'); return { isLate: true, movePercent: movePercent }; } return { isLate: false, movePercent: movePercent }; }
+function isRsiBlocked(d, direction) { const rsi = d.rsi; const isPump = direction === 'PUMP'; const isDump = direction === 'DUMP'; if (isPump && rsi > CONFIG.RSI_OVERBOUGHT_LIMIT) { log(`🚫 ${d.symbol} LONG ENGELLENDİ! RSI ${fmt(rsi,0)} >${CONFIG.RSI_OVERBOUGHT_LIMIT}`, 'error'); return { blocked: true, reason: `RSI ${fmt(rsi,0)} >${CONFIG.RSI_OVERBOUGHT_LIMIT} - Aşırı Alım` }; } if (isDump && rsi < CONFIG.RSI_OVERSOLD_LIMIT) { log(`🚫 ${d.symbol} SHORT ENGELLENDİ! RSI ${fmt(rsi,0)} <${CONFIG.RSI_OVERSOLD_LIMIT}`, 'error'); return { blocked: true, reason: `RSI ${fmt(rsi,0)} <${CONFIG.RSI_OVERSOLD_LIMIT} - Aşırı Satım` }; } return { blocked: false, reason: null }; }
+function recordSignalResult(signalId, result, pnlPercent) { const idx = learningData.signals.findIndex(s => s.id === signalId); if (idx === -1) return; const signal = learningData.signals[idx]; signal.result = result; signal.pnl = pnlPercent; signal.resolvedAt = Date.now(); updateIndicatorPerformance(signal, result); updateStrategyPerformance(signal.strategy, result, pnlPercent); saveLearningData(); updateLearningDisplay(); log(`📊 ${signal.symbol}${signal.direction} ${result}:${pnlPercent > 0 ? '+' : ''}${fmt(pnlPercent, 2)}\% [${signal.strategy}]`, result === 'WIN' ? 'success' : 'error'); const resolved = learningData.signals.filter(s => s.result !== 'PENDING'); if (resolved.length % CONFIG.AUTO_TUNE_INTERVAL === 0) autoTuneParameters(); }
+function trackNewSignal(coin, strategy) { const tenMinutesAgo = Date.now() - CONFIG.DUPLICATE_WINDOW; const recentSignal = learningData.signals.find(s => s.symbol === coin.symbol && s.direction === coin.direction && s.strategy === strategy && s.timestamp > tenMinutesAgo); if (recentSignal) { log(`⚠️ ${coin.symbol} ${coin.direction}${strategy} için son 10 dk'da zaten sinyal var.`, 'warn'); return null; } const fiveMinutesAgo = Date.now() - 300000; const anyRecentSignal = learningData.signals.find(s => s.symbol === coin.symbol && s.timestamp > fiveMinutesAgo); if (anyRecentSignal) { log(`⚠️ ${coin.symbol} için son 5 dk'da farklı stratejide sinyal var.`, 'warn'); return null; } const id = coin.symbol + '_' + Date.now(); const signalData = { id, symbol: coin.symbol, direction: coin.direction, entryPrice: coin.price, score: coin.advanced ? coin.advanced.finalScore : coin.baseScore, tp1: parseFloat(coin.expectation.tp1.replace(/[^0-9.-]/g, '')), tp2: parseFloat(coin.expectation.tp2.replace(/[^0-9.-]/g, '')), tp3: parseFloat(coin.expectation.tp3.replace(/[^0-9.-]/g, '')), sl: parseFloat(coin.expectation.stopLoss.replace(/[^0-9.-]/g, '')), patterns: coin.patterns || [], timestamp: Date.now(), timeframe: safeValue('timeframe', '5m'), result: 'PENDING', pnl: 0, strategy: strategy || 'scalping', activeIndicators: coin.activeIndicators || [], hour: new Date().getHours(), liqData: coin.liqData || null, smartPatterns: coin.smartPatterns || null }; learningData.signals.push(signalData); if (learningData.signals.length > 200) learningData.signals.shift(); saveLearningData(); log(`✅ ${coin.symbol}${strategy.toUpperCase()} sinyal kaydedildi`, 'success'); 
+
+if (telegramSettings.botToken && telegramSettings.chatId && telegramSettings.autoSend !== 'disabled') {
+const finalScore = coin.advanced ? coin.advanced.finalScore : coin.baseScore;
+const isElit = finalScore >= 80;
+const isScore50 = finalScore >= 50;
+
+if (telegramSettings.autoSend === 'all' || 
+    (telegramSettings.autoSend === 'score50' && isScore50) || 
+    (telegramSettings.autoSend === 'enabled' && isElit)) {
+const tgText = `⚡ *ZEUS TRADE BOT SİNYALİ* ⚡\n\n` +
+`🪙 Coin: *${coin.symbol}*\n` +
+`📊 Yön: *${coin.direction} (${coin.confidence})*\n` +
+`📥 Giriş: \`${fmtPrice(coin.price)}\`\n` +
+`🎯 TP1: \`${coin.expectation.tp1}\`\n` +
+`🎯 TP2: \`${coin.expectation.tp2}\`\n` +
+`🎯 TP3: \`${coin.expectation.tp3}\`\n` +
+`🛑 Stop: \`${coin.expectation.stopLoss}\`\n` +
+`⭐ Skor: *${finalScore}/100*\n` +
+`📝 Neden: ${coin.reasonText}`;
+sendTelegramMessage(tgText);
+}
+}
+
+return id; }
+async function checkPendingSignals() { const pending = learningData.signals.filter(s => s.result === 'PENDING'); if (pending.length === 0) { log('ℹ️ Bekleyen sinyal yok', 'info'); return; } log(`🔍 ${pending.length} bekleyen sinyal kontrol ediliyor...`, 'info'); for (const signal of pending) { try { const tf = signal.timeframe || '5m'; const tfParam = TF_MAP[tf] || '5m'; const url = `${CONFIG.apiBinanceFutures}/fapi/v1/klines?symbol=${signal.symbol}&interval=${tfParam}&limit=10`; const klines = await fetchJSON(url); if (!klines || klines.length === 0) continue; const currentPrice = parseFloat(klines[klines.length-1][4]); const lastCandle = klines[klines.length-1]; const lastClose = parseFloat(lastCandle[4]); const isPump = signal.direction === 'PUMP'; const isShort = signal.direction === 'DUMP'; let pnl = 0, result = 'PENDING'; const timePassed = Date.now() - signal.timestamp; const maxDuration = signal.strategy === 'scalping' ? 3600000 : (signal.strategy === 'swing' ? 14400000 : (signal.strategy === 'liquidity' ? 7200000 : (signal.strategy === 'harmonic' ? 7200000 : 28800000))); if (timePassed > maxDuration) { result = 'CLOSED'; pnl = isPump ? ((currentPrice - signal.entryPrice) / signal.entryPrice) * 100 : ((signal.entryPrice - currentPrice) / signal.entryPrice) * 100; if (pnl > 1.0) result = 'WIN'; else if (pnl < -2.0) result = 'LOSS'; else result = 'CLOSED'; } else { if (isPump) { if (lastClose <= signal.sl) { result = 'LOSS'; pnl = ((signal.sl - signal.entryPrice) / signal.entryPrice) * 100; } else if (lastClose >= signal.tp3) { result = 'WIN'; pnl = ((signal.tp3 - signal.entryPrice) / signal.entryPrice) * 100; } else if (lastClose >= signal.tp2) { result = 'WIN'; pnl = ((signal.tp2 - signal.entryPrice) / signal.entryPrice) * 100; } else if (lastClose >= signal.tp1) { result = 'WIN'; pnl = ((signal.tp1 - signal.entryPrice) / signal.entryPrice) * 100; } } else if (isShort) { if (lastClose >= signal.sl) { result = 'LOSS'; pnl = ((signal.entryPrice - signal.sl) / signal.entryPrice) * 100; } else if (lastClose <= signal.tp3) { result = 'WIN'; pnl = ((signal.entryPrice - signal.tp3) / signal.entryPrice) * 100; } else if (lastClose <= signal.tp2) { result = 'WIN'; pnl = ((signal.entryPrice - signal.tp2) / signal.entryPrice) * 100; } else if (lastClose <= signal.tp1) { result = 'WIN'; pnl = ((signal.entryPrice - signal.tp1) / signal.entryPrice) * 100; } } } if (result !== 'PENDING') recordSignalResult(signal.id, result, pnl); } catch(e) { log(`❌ ${signal.symbol} kontrol hatası: ${e.message}`, 'error'); } await new Promise(r => setTimeout(r, 200)); } updateLearningDisplay(); }
+function generateAIStrategy() { const resolved = learningData.signals.filter(s => s.result !== 'PENDING'); if (resolved.length < 3) return `<div class="insight-item neutral">En az 3 sonuçlanan sinyal gerekli. (Şu an: ${resolved.length})</div>`; const indPerf = Object.entries(learningData.indicatorPerformance).filter(([_, p]) => p.total >= 3).map(([name, p]) => ({ name, winRate: p.wins / p.total, weight: learningData.dynamicWeights[name] || 1.0 })).sort((a, b) => b.winRate - a.winRate).slice(0, 3); if (indPerf.length === 0) return `<div class="insight-item neutral">Gösterge verisi toplanıyor...</div>`; const bestIndicators = indPerf.map(i => i.name).join(', '); const avgWinRate = (indPerf.reduce((a,b) => a + b.winRate, 0) / indPerf.length) * 100; return `<div class="insight-item positive"><strong>🎯 En Başarılı Kombinasyon:</strong> [${bestIndicators}] (Başarı: \%${fmt(avgWinRate,1)})</div>`; }
+
+function updateLearningDisplay() {
+const el = (id) => document.getElementById(id);
+const set = (id, val) => { const e = el(id); if (e) e.textContent = val; };
+
+const allSignals = learningData.signals || [];
+const resolved = allSignals.filter(s => s.result !== 'PENDING');
+const wins = resolved.filter(s => s.result === 'WIN');
+const losses = resolved.filter(s => s.result === 'LOSS');
+const pending = allSignals.filter(s => s.result === 'PENDING');
+
+const winRate = resolved.length > 0 ? (wins.length / resolved.length) * 100 : 0;
+const totalPnl = resolved.reduce((acc, s) => acc + (s.pnl || 0), 0);
+
+set('aiPerfRatio', `${wins.length} /${resolved.length}`);
+set('aiWinRateText', `Kazanma: ${fmt(winRate, 1)}%`);
+set('aiWinsCount', wins.length);
+set('aiLossCount', losses.length);
+set('aiNetPnl', `${totalPnl >= 0 ? '+' : ''}${fmt(totalPnl, 2)}%`);
+set('aiPnlDetails', `${wins.length}W / ${losses.length}L / ${pending.length} bekleyen`);
+
+const avgWinPnl = wins.length > 0 ? wins.reduce((a,b)=>a+b.pnl,0)/wins.length : 0;
+const avgLossPnl = losses.length > 0 ? losses.reduce((a,b)=>a+b.pnl,0)/losses.length : 0;
+set('aiWinsAvg', `Ort: ${wins.length > 0 ? '+' + fmt(avgWinPnl,2) + '%' : '-'}`);
+set('aiLossAvg', `Ort: ${losses.length > 0 ? fmt(avgLossPnl,2) + '%' : '-'}`);
+
+const aiLevel = Math.min(10, Math.floor(resolved.length / 3));
+set('statAILevel', aiLevel);
+set('statHarmonic', harmonicCount);
+set('statBlocked', blockedCount);
+const brainEl = el('brainLevel'); if (brainEl) brainEl.textContent = 'Seviye ' + aiLevel;
+const liqBrainEl = el('liqBrainLevel'); if (liqBrainEl) liqBrainEl.textContent = 'Seviye ' + Math.min(10, Math.floor(resolved.length / 2));
+
+const indicatorHtml = Object.entries(learningData.indicatorPerformance).map(([name, perf]) => {
+const wr = perf.total > 0 ? (perf.wins / perf.total) * 100 : 50;
+const weight = learningData.dynamicWeights[name] || 1.0;
+const barClass = wr >= 60 ? 'high' : (wr >= 45 ? 'medium' : 'low');
+const isPenalized = weight <= 0.2;
+return `<div class="ai-metric"><div style="flex:1"><span class="label">${name}${isPenalized ? '<span style="color:#f85149;font-size:10px;">(ELENDİ)</span>' : ''}</span><div class="weight-bar"><div class="weight-fill ${barClass}" style="width:${wr}%"></div></div></div><div style="text-align:right"><span class="value ${wr >= 60 ? 'good' : (wr >= 45 ? 'neutral' : 'bad')}">${fmt(wr,1)}%</span><br><span style="font-size:10px;color:#8b949e;">Ağırlık: ${fmt(weight,2)}x</span></div></div>`;
+}).join('');
+const indEl = el('indicatorPerformance'); if (indEl) indEl.innerHTML = indicatorHtml || '<div class="insight-item neutral">Henüz veri yok</div>';
+
+const strategyHtml = Object.entries(learningData.strategyPerformance).map(([name, perf]) => {
+const total2 = perf.wins + perf.losses;
+const wr = total2 > 0 ? (perf.wins / total2) * 100 : 0;
+const isActive = learningData.autoTunedParams.strategy === name;
+return `<div style="background:#0d1117; padding:10px; border-radius:6px; margin-bottom:8px; border-left:3px solid ${isActive ? '#3fb950' : '#30363d'};">
+<div style="display:flex; justify-content:space-between; align-items:center;">
+<strong>${name.toUpperCase()}${isActive ? '✓ AKTİF' : ''}</strong>
+<span style="color:${wr >= 50 ? '#3fb950' : '#f85149'}; font-weight:bold;">${fmt(wr,1)}% (${perf.wins}W/${perf.losses}L)</span>
+</div>
+<div style="font-size:11px; color:#8b949e; margin-top:4px;">Ort. K/Z: ${fmt(perf.avgPnl,2)}%</div>
+</div>`;
+}).join('');
+const stratEl = el('strategyPerformance'); if (stratEl) stratEl.innerHTML = strategyHtml;
+
+const strategyEl = el('aiStrategyOutput'); if (strategyEl) strategyEl.innerHTML = generateAIStrategy();
+}
+
+function updateLiquidityDisplay() {
+const el = (id) => document.getElementById(id);
+const lsDisplay = el('lsRatioDisplay');
+if (lsDisplay) { const lsCoins = Object.entries(liquidityData.lsRatios).slice(0, 6); if (lsCoins.length === 0) lsDisplay.innerHTML = '<div class="insight-item neutral" style="grid-column:1/-1;">Likidite verisi bekleniyor...</div>'; else lsDisplay.innerHTML = lsCoins.map(([symbol, data]) => { const ls = data.lsGlobal; const cls = ls > 0.6 ? 'long-dom' : (ls < 0.4 ? 'short-dom' : 'neutral'); const longPct = (ls / (ls + 1)) * 100; return `<div class="ls-box"><div class="ls-label">${symbol.replace('USDT','')} LS Ratio</div><div class="ls-value ${cls}">${fmt(ls, 2)}</div><div class="ls-bar"><div class="ls-bar-long" style="width:${longPct}%"></div><div class="ls-bar-short" style="width:${100-longPct}%"></div></div><div style="font-size:9px;color:#8b949e;margin-top:4px;">Taker: ${fmt(data.taker, 2)}</div></div>`; }).join(''); }
+const longPoolsEl = el('longPools'); if (longPoolsEl) { if (liquidityData.longPools.length === 0) longPoolsEl.innerHTML = '<div class="insight-item neutral">Long likidite havuzu bulunamadı</div>'; else longPoolsEl.innerHTML = liquidityData.longPools.map((p) => { const strength = p.strength > 50 ? 'strong' : (p.strength > 20 ? 'medium' : 'weak'); const coinName = p.symbol ? p.symbol.replace('USDT','') : '???'; const liqUSD = p.volume * p.mid; return `<div class="liq-zone-item"><div><div class="zone-price">${fmtPrice(p.mid)} <span class="zone-coin">${coinName}</span></div><div class="zone-oi">${fmtPrice(p.low)} - ${fmtPrice(p.high)} •${p.count}x tekrar</div><div style="font-size:10px;color:#FFD700;margin-top:3px;">💰 Likidite: <b>${fmtVol(liqUSD)}</b> @${fmtPrice(p.mid)}</div></div><div style="text-align:right"><div class="zone-strength ${strength}">${strength === 'strong' ? '🔥 GÜÇLÜ' : (strength === 'medium' ? '🟡 ORTA' : '💧 ZAYIF')}</div><div class="zone-oi">Hacim: ${fmtVol(p.volume)}</div></div></div>`; }).join(''); }
+const shortPoolsEl = el('shortPools'); if (shortPoolsEl) { if (liquidityData.shortPools.length === 0) shortPoolsEl.innerHTML = '<div class="insight-item neutral">Short likidite havuzu bulunamadı</div>'; else shortPoolsEl.innerHTML = liquidityData.shortPools.map((p) => { const strength = p.strength > 50 ? 'strong' : (p.strength > 20 ? 'medium' : 'weak'); const coinName = p.symbol ? p.symbol.replace('USDT','') : '???'; const liqUSD = p.volume * p.mid; return `<div class="liq-zone-item"><div><div class="zone-price">${fmtPrice(p.mid)} <span class="zone-coin">${coinName}</span></div><div class="zone-oi">${fmtPrice(p.low)} - ${fmtPrice(p.high)} •${p.count}x tekrar</div><div style="font-size:10px;color:#FFD700;margin-top:3px;">💰 Likidite: <b>${fmtVol(liqUSD)}</b> @${fmtPrice(p.mid)}</div></div><div style="text-align:right"><div class="zone-strength ${strength}">${strength === 'strong' ? '🔥 GÜÇLÜ' : (strength === 'medium' ? '🟡 ORTA' : '💧 ZAYIF')}</div><div class="zone-oi">Hacim: ${fmtVol(p.volume)}</div></div></div>`; }).join(''); }
+const alertContent = el('liquidityAlertContent'); if (alertContent) { if (liquidityData.alerts.length === 0) alertContent.innerHTML = '<div class="insight-item neutral">Şu an kritik likidite uyarısı yok</div>'; else alertContent.innerHTML = liquidityData.alerts.map(a => { const unusualHtml = a.isUnusual ? `<span class="unusual">⚡ OLAĞAN DIŞI BİRİKME TESPİT EDİLDİ!</span>` : ''; return `<div class="alert-item ${a.type}"><span class="coin-tag">${a.coin.replace('USDT','')}</span><div class="alert-text">${unusualHtml}<span>${a.text.replace('⚠️ OLAĞAN DIŞI BİRİKME TESPİT EDİLDİ! ', '')}</span></div><span class="score-tag">Skor: ${fmt(a.score, 0)}</span></div>`; }).join(''); }
+const statLiqZones = el('statLiqZones'); if (statLiqZones) statLiqZones.textContent = liquidityData.longPools.length + liquidityData.shortPools.length;
+updateLiquidityCommentary();
+}
+async function fetchAllData() {
+const tf = safeValue('timeframe', '5m'); const minVol = parseFloat(safeValue('minVol', '1')) * 1000000;
+log(` Binance ve Bybit Futures coinler taranıyor (${tf})...`, 'info');
+const bnTickers = await fetchJSON(`${CONFIG.apiBinanceFutures}/fapi/v1/ticker/24hr`);
+const byTickersRaw = await fetchJSON(`${CONFIG.apiBybit}/v5/market/tickers?category=linear`);
+const byTickers = byTickersRaw && byTickersRaw.result && byTickersRaw.result.list ? byTickersRaw.result.list.map(t => ({ symbol: t.symbol, price: parseFloat(t.lastPrice), vol24h: parseFloat(t.turnover24h) || 0 })) : [];
+const coinMap = new Map();
+if (bnTickers && Array.isArray(bnTickers)) { bnTickers.forEach(t => { if (t.symbol.endsWith('USDT') && parseFloat(t.quoteVolume) >= minVol) { coinMap.set(t.symbol, { symbol: t.symbol, price: parseFloat(t.lastPrice), vol24h: parseFloat(t.quoteVolume), exchanges: ['Binance'] }); } }); }
+if (byTickers && Array.isArray(byTickers)) { byTickers.forEach(t => { if (t.symbol.endsWith('USDT') && t.vol24h >= minVol) { if (coinMap.has(t.symbol)) { const existing = coinMap.get(t.symbol); existing.exchanges.push('Bybit'); existing.vol24h = Math.max(existing.vol24h, t.vol24h); } else { coinMap.set(t.symbol, { symbol: t.symbol, price: t.price, vol24h: t.vol24h, exchanges: ['Bybit'] }); } } }); }
+const allCoins = Array.from(coinMap.values()); allCoins.sort((a, b) => b.vol24h - a.vol24h); const totalCoins = allCoins.length;
+log(`✅ ${totalCoins} benzersiz futures coin bulundu`, 'success');
+const statTotal = document.getElementById('statTotal'); if (statTotal) statTotal.textContent = totalCoins;
+const tfConfig = TF_MAP[tf] || '5m'; const liqCoinCount = Math.min(CONFIG.LIQ_COIN_COUNT, allCoins.length); const topCoins = allCoins.slice(0, liqCoinCount).map(c => c.symbol);
+log(` İlk ${liqCoinCount} coin için likidite verisi çekiliyor...`, 'info');
+const liqPromises = topCoins.map(s => fetchLiquidityData(s)); const liqResults = await Promise.all(liqPromises);
+liquidityData.lsRatios = {}; topCoins.forEach((symbol, i) => { if (liqResults[i]) liquidityData.lsRatios[symbol] = liqResults[i]; });
+const bybitTf = getBybitInterval(tfConfig);
+const klineData = await batchFetch(allCoins, async (coin) => {
+let klines = null; const primaryEx = coin.exchanges.includes('Binance') ? 'Binance' : 'Bybit';
+try { if (primaryEx === 'Binance') { klines = await fetchJSON(`${CONFIG.apiBinanceFutures}/fapi/v1/klines?symbol=${coin.symbol}&interval=${tfConfig}&limit=50`); } else { const res = await fetchJSON(`${CONFIG.apiBybit}/v5/market/kline?category=linear&symbol=${coin.symbol}&interval=${bybitTf}&limit=50`); if (res && res.retCode === 0 && res.result && res.result.list) { klines = res.result.list.reverse().map(k => [ parseInt(k[0]), parseFloat(k[1]), parseFloat(k[2]), parseFloat(k[3]), parseFloat(k[4]), parseFloat(k[5]) ]); } } } catch (e) { try { if (primaryEx === 'Binance' && coin.exchanges.includes('Bybit')) { const res = await fetchJSON(`${CONFIG.apiBybit}/v5/market/kline?category=linear&symbol=${coin.symbol}&interval=${bybitTf}&limit=50`); if (res && res.retCode === 0 && res.result && res.result.list) { klines = res.result.list.reverse().map(k => [ parseInt(k[0]), parseFloat(k[1]), parseFloat(k[2]), parseFloat(k[3]), parseFloat(k[4]), parseFloat(k[5]) ]); } } else if (primaryEx === 'Bybit' && coin.exchanges.includes('Binance')) { klines = await fetchJSON(`${CONFIG.apiBinanceFutures}/fapi/v1/klines?symbol=${coin.symbol}&interval=${tfConfig}&limit=50`); } } catch (e2) { klines = null; } }
+if (!klines || klines.length < 30) return null;
+const closes = klines.map(k => parseFloat(k[4])); const volumes = klines.map(k => parseFloat(k[5])); const currentPrice = closes[closes.length - 1];
+const ema20 = calculateEMA(closes, 20); const ema50 = calculateEMA(closes, 50); const rsiHistory = calculateRSIArray(closes, 14); const rsi = rsiHistory[rsiHistory.length - 1];
+const adxData = calculateADX(klines, 14); const atr = calculateATR(klines, 14);
+const avgVol = volumes.slice(-24).reduce((a,b) => a+b, 0) / 24; const lastVol = volumes[volumes.length - 1]; const volMult = lastVol / (avgVol || 1);
+const lastCandle = klines[klines.length - 1]; const lastOpen = parseFloat(lastCandle[1]); const lastHigh = parseFloat(lastCandle[2]); const lastLow = parseFloat(lastCandle[3]); const lastClose = parseFloat(lastCandle[4]);
+const lastCandleChange = ((lastClose - lastOpen) / lastOpen) * 100;
+const bodySize = Math.abs(lastClose - lastOpen); const upperWick = lastHigh - Math.max(lastOpen, lastClose); const lowerWick = Math.min(lastOpen, lastClose) - lastLow; const totalRange = lastHigh - lastLow;
+const bodyRatio = totalRange > 0 ? bodySize / totalRange : 1; const lowerWickRatio = totalRange > 0 ? lowerWick / totalRange : 0; const upperWickRatio = totalRange > 0 ? upperWick / totalRange : 0;
+const isLongLowerWick = lowerWickRatio > 0.6 && bodyRatio < 0.3; const isLongUpperWick = upperWickRatio > 0.6 && bodyRatio < 0.3;
+const closePosition = totalRange > 0 ? (lastClose - lastLow) / totalRange : 0.5;
+const last20Highs = klines.slice(-20).map(k => parseFloat(k[2])); const last20Lows = klines.slice(-20).map(k => parseFloat(k[3]));
+const high20 = Math.max(...last20Highs); const low20 = Math.min(...last20Lows);
+const momentum10 = ((closes[closes.length-1] - closes[closes.length-11]) / closes[closes.length-11]) * 100;
+const macd = calculateMACD(closes); const bb = calculateBollinger(closes, 20, 2); const stoch = calculateStochastic(klines, 14); const vwap = calculateVWAP(klines); const deltaProxy = calculateDeltaProxy(klines);
+const patterns = detectCandlePatterns(klines); const streak = calculateStreak(closes);
+const liqZones = analyzeLiquidityZones(klines, coin.symbol); const coinLiqData = liquidityData.lsRatios[coin.symbol] || { lsGlobal: 0.5, lsTop: 0.5, taker: 0.5 };
+const smartPatterns = detectAllSmartPatterns(klines); const harmonicPatterns = detectHarmonicPatterns(klines); const allPatterns = [...(smartPatterns || []), ...(harmonicPatterns || [])];
+return { ...coin, price: currentPrice, avgVol, lastVol, volMult, ema20, ema50, rsi, rsiHistory, adx: adxData.adx, diPlus: adxData.diPlus, diMinus: adxData.diMinus, atr, high20, low20, momentum10, closePosition, lastCandleChange, lastOpen, lastHigh, lastLow, lastClose, bodyRatio, lowerWickRatio, upperWickRatio, isLongLowerWick, isLongUpperWick, macd, bb, stoch, vwap, deltaProxy, patterns, streak, closes, klines, liqZones, liqData: coinLiqData, smartPatterns: allPatterns.length > 0 ? allPatterns : null 
+    };
+  });
+  
+  const validData = klineData.filter(d => d !== null);
+  const statScanned = document.getElementById('statScanned'); 
+  if (statScanned) statScanned.textContent = validData.length;
+  log(`✅ ${validData.length}/${totalCoins} futures coin tarandı`, 'success');
+  
+  const allLongPools = [], allShortPools = []; 
+  validData.forEach(d => { 
+    if (d.liqZones) { 
+      d.liqZones.longPools.forEach(p => allLongPools.push(p)); 
+      d.liqZones.shortPools.forEach(p => allShortPools.push(p)); 
+    } 
+  });
+  
+  allLongPools.sort((a,b) => b.strength - a.strength); 
+  allShortPools.sort((a,b) => b.strength - a.strength);
+  liquidityData.longPools = allLongPools.slice(0, 10); 
+  liquidityData.shortPools = allShortPools.slice(0, 10);
+  liquidityData.alerts = generateTopLiquidityAlerts(validData);
+  
+  updateLiquidityDisplay();
+  return validData;
+}
+function calculateExpectation(d, direction) { 
+  const atr = d.atr, price = d.price; 
+  const isLong = direction === 'PUMP'; 
+  const params = learningData.autoTunedParams; 
+  const minTp1Mult = params.slMult * CONFIG.MIN_RR_RATIO; 
+  const tp1Mult = Math.max(params.tp1Mult, minTp1Mult); 
+  const tp2Mult = Math.max(params.tp2Mult, params.slMult * CONFIG.MIN_RR_RATIO * 2); 
+  const tp3Mult = Math.max(params.tp3Mult, params.slMult * CONFIG.MIN_RR_RATIO * 3); 
+  let tp1, tp2, tp3; 
+  if (d.smartPatterns && d.smartPatterns.length > 0 && d.smartPatterns[0].targetPrice) { 
+    const target = d.smartPatterns[0].targetPrice; 
+    const dist = Math.abs(price - target); 
+    tp1 = isLong ? price + (dist * 0.5) : price - (dist * 0.5); 
+    tp2 = isLong ? price + (dist * 1.0) : price - (dist * 1.0); 
+    tp3 = isLong ? price + (dist * 1.5) : price - (dist * 1.5); 
+  } else { 
+    tp1 = isLong ? price + atr * tp1Mult : price - atr * tp1Mult; 
+    tp2 = isLong ? price + atr * tp2Mult : price - atr * tp2Mult; 
+    tp3 = isLong ? price + atr * tp3Mult : price - atr * tp3Mult; 
+  } 
+  const sl = isLong ? price - atr * params.slMult : price + atr * params.slMult; 
+  const tp1Pct = Math.abs((tp1 - price) / price) * 100; 
+  const tp2Pct = Math.abs((tp2 - price) / price) * 100; 
+  const tp3Pct = Math.abs((tp3 - price) / price) * 100; 
+  const slPct = Math.abs((sl - price) / price) * 100; 
+  const rrRatio = tp1Pct / slPct; 
+  const weightedExpectation = (tp1Pct * 0.5) + (tp2Pct * 0.3) + (tp3Pct * 0.2); 
+    return { 
+      tp1: fmtPrice(tp1), tp2: fmtPrice(tp2), tp3: fmtPrice(tp3), 
+      tp1Pct: fmtP(tp1Pct, 2), tp2Pct: fmtP(tp2Pct, 2), tp3Pct: fmtP(tp3Pct, 2), 
+      expectation: fmtP(weightedExpectation, 2), stopLoss: fmtPrice(sl), 
+      slPct: fmtP(slPct, 2), rrRatio: rrRatio, rrText: `1:${fmt(rrRatio, 1)}`, 
+      rrValid: rrRatio >= CONFIG.MIN_RR_RATIO 
+    }; 
+}
+
+function determineDirection(d) {
+  let pumpVotes = 0, dumpVotes = 0; 
+  const reasons = [], activeIndicators = []; 
+  const w = learningData.dynamicWeights; 
+  const liq = d.liqData || { lsGlobal: 0.5, taker: 0.5 };
+  
+  if (d.lastCandleChange > 0.5) { 
+    pumpVotes += 2 * (w.Volume || 1); reasons.push('Son mum YEŞİL'); activeIndicators.push('Volume'); 
+  } else if (d.lastCandleChange < -0.5) { 
+    dumpVotes += 2 * (w.Volume || 1); reasons.push('Son mum KIRMIZI'); activeIndicators.push('Volume'); 
+  }
+  
+  if (d.ema20 > d.ema50 && d.price > d.ema20) { 
+    pumpVotes += 2 * (w.EMA || 1); reasons.push('EMA↑'); activeIndicators.push('EMA'); 
+  } else if (d.ema20 < d.ema50 && d.price < d.ema20) { 
+    dumpVotes += 2 * (w.EMA || 1); reasons.push('EMA↓'); activeIndicators.push('EMA'); 
+  }
+  
+  if (d.macd.cross === 'BULLISH_CROSS') { 
+    pumpVotes += 3 * (w.MACD || 1); reasons.push('MACD Bullish'); activeIndicators.push('MACD_bullish_cross'); 
+  } else if (d.macd.cross === 'BEARISH_CROSS') { 
+    dumpVotes += 3 * (w.MACD || 1); reasons.push('MACD Bearish'); activeIndicators.push('MACD_bearish_cross'); 
+  } else if (d.macd.histogram > 0) { 
+    pumpVotes += 1 * (w.MACD || 1); activeIndicators.push('MACD_positive'); 
+  } else { 
+    dumpVotes += 1 * (w.MACD || 1); activeIndicators.push('MACD_negative'); 
+  }
+  
+  if (d.rsi < 30) { 
+    pumpVotes += 3 * (w.RSI || 1); reasons.push('RSI Aşırı Satım'); activeIndicators.push('RSI_oversold'); 
+  } else if (d.rsi > 70) { 
+    dumpVotes += 3 * (w.RSI || 1); reasons.push('RSI Aşırı Alım'); activeIndicators.push('RSI_overbought'); 
+  }
+  
+  if (d.bb.percentB > 0.8) { 
+    pumpVotes += 2 * (w.Bollinger || 1); activeIndicators.push('Bollinger_upper'); 
+  } else if (d.bb.percentB < 0.2) { 
+    dumpVotes += 2 * (w.Bollinger || 1); activeIndicators.push('Bollinger_lower'); 
+  }
+  
+  if (d.diPlus > d.diMinus) { 
+    pumpVotes += 3 * (w.ADX || 1); reasons.push(`📈 Pozitif Trend`); activeIndicators.push('DI_Trend_Pozitif'); 
+  } else { 
+    dumpVotes += 3 * (w.ADX || 1); reasons.push(`📉 Negatif Trend`); activeIndicators.push('DI_Trend_Negatif'); 
+  }
+  
+  if (d.adx > 25) { 
+    if (d.diPlus > d.diMinus) { 
+      pumpVotes += 2 * (w.ADX || 1); reasons.push(`💪 Güçlü Yükseliş`); 
+    } else { 
+      dumpVotes += 2 * (w.ADX || 1); reasons.push(`💪 Güçlü Düşüş`); 
+    } 
+  }
+  
+  const alignedP = d.patterns.find(p => p.type === 'PUMP'); 
+  const oppP = d.patterns.find(p => p.type === 'DUMP');
+  if (alignedP) { 
+    pumpVotes += alignedP.strength * (w.Pattern || 1); reasons.push(alignedP.name); activeIndicators.push('Pattern_' + alignedP.name); 
+  }
+  if (oppP) { 
+    dumpVotes += oppP.strength * (w.Pattern || 1); reasons.push(oppP.name); activeIndicators.push('Pattern_' + oppP.name); 
+  }
+  
+  if (d.momentum10 > 2) { 
+    pumpVotes += 1 * (w.Momentum || 1); activeIndicators.push('Momentum_up'); 
+  } else if (d.momentum10 < -2) { 
+    dumpVotes += 1 * (w.Momentum || 1); activeIndicators.push('Momentum_down'); 
+  }
+  
+  const liqWeight = w.Liquidity || 1.0;
+  if (liq.lsGlobal > 0.75) { 
+    dumpVotes += 3 * liqWeight; reasons.push(`LS Aşırı Long`); activeIndicators.push('Liquidity_long_squeeze'); 
+  } else if (liq.lsGlobal < 0.25) { 
+    pumpVotes += 3 * liqWeight; reasons.push(`LS Aşırı Short`); activeIndicators.push('Liquidity_short_squeeze'); 
+  }
+  
+  if (liq.taker > 0.6) { 
+    pumpVotes += 2 * liqWeight; activeIndicators.push('Taker_buy_pressure'); 
+  } else if (liq.taker < 0.4) { 
+    dumpVotes += 2 * liqWeight; activeIndicators.push('Taker_sell_pressure'); 
+  }
+  
+  if (d.liqZones) { 
+    const nearestLong = d.liqZones.longPools[0]; 
+    const nearestShort = d.liqZones.shortPools[0]; 
+    if (nearestLong) { 
+      const distPct = ((d.price - nearestLong.mid) / d.price) * 100; 
+      if (distPct < 1.5) { 
+        dumpVotes += 2 * liqWeight; reasons.push(`Long Pool Yakın`); activeIndicators.push('Liquidity_near_long_pool'); 
+      } 
+    } 
+    if (nearestShort) { 
+      const distPct = ((nearestShort.mid - d.price) / d.price) * 100; 
+      if (distPct < 1.5) { 
+        pumpVotes += 2 * liqWeight; reasons.push(`Short Pool Yakın`); activeIndicators.push('Liquidity_near_short_pool'); 
+      } 
+    } 
+  }
+  
+  if (d.smartPatterns && d.smartPatterns.length > 0) { 
+    d.smartPatterns.forEach(bp => { 
+      const patternWeight = w.Harmonic || 2.0; 
+      if (bp.direction === 'PUMP') { 
+        pumpVotes += bp.strength * patternWeight; reasons.push(`🦇 ${bp.description}`); activeIndicators.push('Harmonic_' + bp.type); 
+      } else if (bp.direction === 'DUMP') { 
+        dumpVotes += bp.strength * patternWeight; reasons.push(`🦇 ${bp.description}`); activeIndicators.push('Harmonic_' + bp.type); 
+      } 
+    }); 
+  }
+  
+  const pine = detectPineSignals(d); 
+  pumpVotes += pine.pumpVotes; 
+  dumpVotes += pine.dumpVotes; 
+  reasons.push(...pine.reasons); 
+  activeIndicators.push(...pine.activeIndicators);
+  
+  const diff = pumpVotes - dumpVotes; 
+  let direction, confidence;
+  if (diff >= 5) { 
+    direction = 'PUMP'; confidence = 'GÜÇLÜ'; 
+  } else if (diff >= 2) { 
+    direction = 'PUMP'; confidence = 'ZAYIF'; 
+  } else if (diff <= -5) { 
+    direction = 'DUMP'; confidence = 'GÜÇLÜ'; 
+  } else if (diff <= -2) { 
+    direction = 'DUMP'; confidence = 'ZAYIF'; 
+  } else { 
+    direction = 'NEUTRAL'; confidence = 'BELİRSİZ'; 
+  }
+  return { direction, confidence, pumpVotes, dumpVotes, diff, reasons, activeIndicators };
+}
+
+function analyzeAdvancedSignals(d, isPump, baseScore) {
+  const advChecks = [], advWarnings = []; 
+  let advScore = 0; 
+  const flow = d.deltaProxy;
+  let fScore, fNote; 
+  
+  if (isPump) { 
+    if (flow > 60) { fScore = 20; fNote = 'Alıcılar ÇOK BASKIN 🔥'; } 
+    else if (flow > 53) { fScore = 14; fNote = 'Alıcılar baskın'; } 
+    else if (flow >= 48) { fScore = 8; fNote = 'Dengeli'; } 
+    else { fScore = 3; fNote = 'Satıcılar baskın!'; } 
+  } else { 
+    if (flow < 40) { fScore = 20; fNote = 'Satıcılar ÇOK BASKIN 🔥'; } 
+    else if (flow < 47) { fScore = 14; fNote = 'Satıcılar baskın'; } 
+    else if (flow <= 52) { fScore = 8; fNote = 'Dengeli'; } 
+    else { fScore = 3; fNote = 'Alıcılar baskın!'; } 
+  }
+  
+  advChecks.push({ title: '💸 Emir Akışı', detail: `Alıcı payı ${fmt(flow,1)}\% —${fNote}`, score: fScore, max: 20 }); 
+  advScore += fScore;
+  
+  const m = d.macd; 
+  const histAligned = isPump ? m.histogram > 0 : m.histogram < 0; 
+  const histGrowing = isPump ? m.histogram > m.prevHist : m.histogram < m.prevHist;
+  let mScore = histAligned ? (histGrowing ? 20 : 12) : 3; 
+  let mNote = histAligned ? (histGrowing ? 'Histogram güçleniyor' : 'Uyumlu ama zayıflıyor') : 'MACD ters yönde!';
+  
+  if (m.cross === 'BULLISH_CROSS' && isPump) { mNote = '🟢 TAZE BOĞA KESİŞMESİ!'; mScore = Math.max(mScore, 16); } 
+  if (m.cross === 'BEARISH_CROSS' && !isPump) { mNote = '🔴 TAZE AYI KESİŞMESİ!'; mScore = Math.max(mScore, 16); }
+  
+  advChecks.push({ title: '📊 MACD', detail: `Hist ${m.histogram >= 0 ? '+' : ''}${fmt(m.histogram, 4)} —${mNote}`, score: mScore, max: 20 }); 
+  advScore += mScore;
+  
+  const bb = d.bb; 
+  let bScore, bNote; 
+  if (isPump) { 
+    if (bb.percentB > 1) { bScore = 18; bNote = 'Bant ÜSTÜNDE'; } 
+    else if (bb.percentB > 0.8) { bScore = 20; bNote = 'Üst banda yapışmış'; } 
+    else if (bb.percentB > 0.5) { bScore = 12; bNote = 'Üst yarıda'; } 
+    else { bScore = 4; bNote = 'Alt yarıda'; } 
+  } else { 
+    if (bb.percentB < 0) { bScore = 18; bNote = 'Bant ALTINDA'; } 
+    else if (bb.percentB < 0.2) { bScore = 20; bNote = 'Alt banda yapışmış'; } 
+    else if (bb.percentB < 0.5) { bScore = 12; bNote = 'Alt yarıda'; } 
+    else { bScore = 4; bNote = 'Üst yarıda'; } 
+  } 
+  if (bb.squeeze) bNote += ' | ⚡ SIKIŞMA!';
+  
+  advChecks.push({ title: '📊 Bollinger', detail: `%B ${fmt(bb.percentB, 2)} —${bNote}`, score: bScore, max: 20 }); 
+  advScore += bScore;
+  
+  const st = d.stoch; 
+  let sScore, sNote; 
+  if (isPump) { 
+    if (st.k < 20 && st.k > st.d) { sScore = 20; sNote = 'Oversold dönüşü'; } 
+    else if (st.k > st.d && st.k > 50) { sScore = 15; sNote = 'Momentum yukarı'; } 
+    else if (st.k > st.d) { sScore = 10; sNote = 'K, D üstünde'; } 
+    else { sScore = 4; sNote = 'Stokastik aşağı'; } 
+  } else { 
+    if (st.k > 80 && st.k < st.d) { sScore = 20; sNote = 'Overbought dönüşü'; } 
+    else if (st.k < st.d && st.k < 50) { sScore = 15; sNote = 'Momentum aşağı'; } 
+    else if (st.k < st.d) { sScore = 10; sNote = 'K, D altında'; } 
+    else { sScore = 4; sNote = 'Stokastik yukarı'; } 
+  } 
+  if (d.vwap) { 
+    const above = d.price > d.vwap; 
+    if (!((isPump && above) || (!isPump && !above))) sScore = Math.max(0, sScore - 5); 
+  }
+  
+  advChecks.push({ title: '🌀 Stoch+VWAP', detail: `K:${fmt(st.k,0)} D:${fmt(st.d,0)} —${sNote}`, score: sScore, max: 20 }); 
+  advScore += sScore;
+  
+  let foScore = 8, foNote = 'Belirgin formasyon yok'; 
+  const alignedP = d.patterns.find(p => (isPump && p.type === 'PUMP') || (!isPump && p.type === 'DUMP')); 
+  const oppP = d.patterns.find(p => (isPump && p.type === 'DUMP') || (!isPump && p.type === 'PUMP'));
+  
+  if (alignedP) { 
+    foScore = alignedP.strength === 3 ? 20 : (alignedP.strength === 2 ? 14 : 8); 
+    foNote = `🎯 ${alignedP.name}`; 
+  } 
+  if (oppP) { 
+    foScore = Math.max(0, foScore + (oppP.strength === 3 ? -10 : -6)); 
+    foNote += `⚠️ TERS: ${oppP.name}`; 
+  }
+  
+  const streak = d.streak; 
+  if (Math.abs(streak) >= 3 && ((isPump && streak > 0) || (!isPump && streak < 0))) { 
+    foScore = Math.min(20, foScore + 4); foNote += ` | ${Math.abs(streak)} mum seri ✓`; 
+  } else if (Math.abs(streak) >= 3) { 
+    foScore = Math.max(0, foScore - 4); foNote += ` | ${Math.abs(streak)} mum TERS seri!`; 
+  }
+  
+  advChecks.push({ title: '🕯️ Formasyon', detail: foNote, score: foScore, max: 20 }); 
+  advScore += foScore;
+  
+  let liqScore = 10, liqNote = 'Nötr likidite'; 
+  const liq = d.liqData || { lsGlobal: 0.5, taker: 0.5 };
+  if (isPump) { 
+    if (liq.lsGlobal < 0.3) { liqScore = 20; liqNote = `Short birikimi (${fmt(liq.lsGlobal,2)}) - Squeeze 🚀`; } 
+    else if (liq.lsGlobal < 0.45) { liqScore = 15; liqNote = `Hafif short bias`; } 
+    else if (liq.lsGlobal > 0.7) { liqScore = 3; liqNote = `Long birikimi - Tehlikeli!`; } 
+    else { liqScore = 10; liqNote = `Dengeli`; } 
+    if (liq.taker > 0.6) { liqScore = Math.min(20, liqScore + 3); liqNote += ' + Taker alım'; } 
+  } else { 
+    if (liq.lsGlobal > 0.7) { liqScore = 20; liqNote = `Long birikimi - Squeeze 📉`; } 
+    else if (liq.lsGlobal > 0.55) { liqScore = 15; liqNote = `Hafif long bias`; } 
+    else if (liq.lsGlobal < 0.3) { liqScore = 3; liqNote = `Short birikimi - Tehlikeli!`; } 
+    else { liqScore = 10; liqNote = `Dengeli`; } 
+    if (liq.taker < 0.4) { liqScore = Math.min(20, liqScore + 3); liqNote += ' + Taker satış'; } 
+  }
+  
+  advChecks.push({ title: '🌊 Likidite', detail: `LS: ${fmt(liq.lsGlobal,2)} | Taker: ${fmt(liq.taker,2)} —${liqNote}`, score: liqScore, max: 20 }); 
+  advScore += liqScore;
+  
+  if (d.smartPatterns && d.smartPatterns.length > 0) { 
+    const totalPatternStrength = d.smartPatterns.reduce((sum, bp) => sum + bp.strength, 0); 
+    const patternBonus = Math.min(30, totalPatternStrength * 6); 
+    advScore += patternBonus; 
+    advChecks.push({ title: '🦇 Harmonik/Pine AI', detail: `${d.smartPatterns.length} formasyon tespit edildi`, score: patternBonus, max: 30 }); 
+  }
+  
+  advScore = Math.round(advScore);
+  if (bb.squeeze) advWarnings.push({ type: 'caution', text: '⚡ BOLLINGER SIKIŞMASI!' });
+  if ((isPump && flow < 45) || (!isPump && flow > 55)) advWarnings.push({ type: 'danger', text: `⚠️ EMİR AKIŞI TERS!` });
+  if (oppP && oppP.strength === 3) advWarnings.push({ type: 'danger', text: `⚠️ TERS FORMASYON: ${oppP.name}` });
+  if (m.cross === (isPump ? 'BEARISH_CROSS' : 'BULLISH_CROSS')) advWarnings.push({ type: 'caution', text: '📊 MACD ters kesti' });
+  if (liq.lsGlobal > 0.75 && isPump) advWarnings.push({ type: 'danger', text: `⚠️ ${d.symbol.replace('USDT','')} AŞIRI LONG BİRİKİMİ` });
+  if (liq.lsGlobal < 0.25 && !isPump) advWarnings.push({ type: 'danger', text: `🟢 ${d.symbol.replace('USDT','')} AŞIRI SHORT BİRİKİMİ` });
+  if (isPump && d.rsi > 70) advWarnings.push({ type: 'danger', text: `⚠️ RSI YÜKSEK (${fmt(d.rsi,0)})` });
+  if (!isPump && d.rsi < 30) advWarnings.push({ type: 'danger', text: `⚠️ RSI DÜŞÜK (${fmt(d.rsi,0)})` });
+  
+  const grade = advScore >= 80 ? { label: '💎 ELİT', cls: 'elite' } : advScore >= 65 ? { label: '💪 GÜÇLÜ', cls: 'strong' } : advScore >= 45 ? { label: '🟡 ORTA', cls: 'mid' } : { label: '❌ ZAYIF', cls: 'weak' };
+  return { 
+    advScore, advChecks, advWarnings, grade, 
+    finalScore: Math.min(100, Math.round(baseScore * 0.5 + advScore * 0.5)) 
+  };
+}
+
+function detectAnomalies(data) {
+  const results = []; 
+  harmonicCount = 0; 
+  blockedCount = 0;
+  
+  data.forEach(d => {
+    const dirResult = determineDirection(d);
+    const symbol = d.symbol;
+    if (newsBoosts[symbol] && newsBoosts[symbol].expiry > Date.now()) {
+      const boost = newsBoosts[symbol];
+      dirResult.pumpVotes += boost.pump;
+      dirResult.dumpVotes += boost.dump;
+      if (boost.pump > 0) dirResult.reasons.push(`📰 HABER DESTEĞİ: +${boost.pump} puan`);
+      if (boost.dump > 0) dirResult.reasons.push(`📰 HABER BASKISI: +${boost.dump} puan`);
+      const diff = dirResult.pumpVotes - dirResult.dumpVotes;
+      if (diff >= 5) { dirResult.direction = 'PUMP'; dirResult.confidence = 'GÜÇLÜ'; }
+      else if (diff >= 2) { dirResult.direction = 'PUMP'; dirResult.confidence = 'ZAYIF'; }
+      else if (diff <= -5) { dirResult.direction = 'DUMP'; dirResult.confidence = 'GÜÇLÜ'; }
+      else if (diff <= -2) { dirResult.direction = 'DUMP'; dirResult.confidence = 'ZAYIF'; }
+      else { dirResult.direction = 'NEUTRAL'; dirResult.confidence = 'BELİRSİZ'; }
+    }
+    
+    if (dirResult.direction === 'NEUTRAL') { 
+      results.push({ ...d, skip: true, dirResult }); 
+      return; 
+    }
+    
+    const lateSignal = isLateSignal(d, dirResult.direction); 
+    const isPump = dirResult.direction === 'PUMP';
+    const rsiCheck = isRsiBlocked(d, dirResult.direction);
+    
+    if (rsiCheck.blocked) { 
+      blockedCount++; 
+      results.push({ 
+        ...d, skip: true, dirResult, isBlocked: true, baseScore: 0, confidence: 'ENGELLENDİ', 
+        checklist: [], warnings: [{ type: 'danger', text: `🚫 ${rsiCheck.reason}` }], 
+        reasonText: `Sinyal engellendi: ${rsiCheck.reason}`, 
+        expectation: { tp1: '-', tp2: '-', tp3: '-', tp1Pct: '0%', tp2Pct: '0%', tp3Pct: '0%', expectation: '0%', stopLoss: '-', slPct: '0%', rrRatio: 0, rrText: '0:0', rrValid: false }, 
+        advanced: null, activeIndicators: [], strategy: 'none', smartPatterns: d.smartPatterns, isLateSignal: false, lastMumStrong: false 
+      }); 
+      return; 
+    }
+    
+    if (CONFIG.BLOCK_LATE_SIGNALS && lateSignal.isLate) { 
+      blockedCount++; 
+      log(`⚠️ ${d.symbol} geç sinyal ENGELLENDİ!`, 'error'); 
+      results.push({ 
+        ...d, skip: true, dirResult, isBlocked: true, baseScore: 0, confidence: 'ENGELLENDİ', 
+        checklist: [], warnings: [{ type: 'danger', text: `⚠️ Geç sinyal!` }], 
+        reasonText: `Sinyal engellendi: Geç sinyal`, 
+        expectation: { tp1: '-', tp2: '-', tp3: '-', tp1Pct: '0%', tp2Pct: '0%', tp3Pct: '0%', expectation: '0%', stopLoss: '-', slPct: '0%', rrRatio: 0, rrText: '0:0', rrValid: false }, 
+        advanced: null, activeIndicators: [], strategy: 'none', smartPatterns: d.smartPatterns, isLateSignal: true, lastMumStrong: false 
+      }); 
+      return; 
+    }
+    
+    const checklist = []; 
+    let totalScore = 0, maxScore = 0;
+    const emaTrend = d.ema20 > d.ema50; 
+    const priceAboveEma20 = d.price > d.ema20; 
+    const trendBullish = emaTrend && priceAboveEma20;
+    let trendScore = 0; 
+    
+    if (isPump && trendBullish) trendScore = 25; 
+    else if (!isPump && !trendBullish) trendScore = 25;
+    
+    checklist.push({ 
+      icon: trendScore >= 20 ? 'pass' : (trendScore >= 10 ? 'warn' : 'fail'), 
+      text: `<strong>Trend:</strong> EMA20${emaTrend ? '>' : '<'}EMA50, fiyat ${priceAboveEma20 ? 'üstünde' : 'altında'}`, 
+      score: trendScore, max: 25, aligns: (isPump && trendBullish) || (!isPump && !trendBullish) 
+    }); 
+    totalScore += trendScore; maxScore += 25;
+    
+    const strongClose = d.closePosition > 0.7; 
+    const weakClose = d.closePosition < 0.3; 
+    let volScore = 0; 
+    if (d.volMult > 2) volScore += 8; 
+    else if (d.volMult > 1.5) volScore += 5; 
+    if (isPump && strongClose) volScore += 7; 
+    else if (!isPump && weakClose) volScore += 7;
+    
+    checklist.push({ 
+      icon: volScore >= 12 ? 'pass' : (volScore >= 7 ? 'warn' : 'fail'), 
+      text: `<strong>Hacim</strong> ${fmt(d.volMult, 2)}× +${isPump ? (strongClose ? 'GÜÇLÜ kapanış' : 'zayıf') : (weakClose ? 'ZAYIF kapanış' : 'nötr')}`, 
+      score: volScore, max: 15, aligns: (isPump && strongClose) || (!isPump && weakClose) 
+    }); 
+    totalScore += volScore; maxScore += 15;
+    
+    const momAligned = isPump ? d.momentum10 > 0 : d.momentum10 < 0; 
+    const momAbs = Math.abs(d.momentum10); 
+    let momScore = 0; 
+    if (momAligned && momAbs > 3) momScore = 15; 
+    else if (momAligned && momAbs > 1.5) momScore = 10; 
+    else if (momAligned && momAbs > 0.5) momScore = 7;
+    
+    checklist.push({ 
+      icon: momScore >= 12 ? 'pass' : (momScore >= 7 ? 'warn' : 'fail'), 
+      text: `<strong>Momentum</strong> ${d.momentum10 > 0 ? '+' : ''}${fmt(d.momentum10, 1)}\%${momAligned ? '✓' : '✗'}`, 
+      score: momScore, max: 15, aligns: momAligned 
+    }); 
+    totalScore += momScore; maxScore += 15;
+    
+    const diAligned = isPump ? d.diPlus > d.diMinus : d.diMinus > d.diPlus; 
+    let adxScore = 0; 
+    if (d.adx > 25 && diAligned) adxScore = 15; 
+    else if (d.adx > 20 && diAligned) adxScore = 10;
+    
+    checklist.push({ 
+      icon: adxScore >= 12 ? 'pass' : (adxScore >= 7 ? 'warn' : 'fail'), 
+      text: `<strong>ADX</strong> ${fmt(d.adx, 1)} ${d.diPlus > d.diMinus ? 'DI+' : 'DI-'} ${diAligned ? '✓' : ''}`, 
+      score: adxScore, max: 15, aligns: diAligned 
+    }); 
+    totalScore += adxScore; maxScore += 15;
+    
+    let breakScore = 0; 
+    if (isPump && d.price > d.high20) breakScore = 15; 
+    else if (!isPump && d.price < d.low20) breakScore = 15; 
+    else if (isPump && d.price > d.high20 * 0.98) breakScore = 8; 
+    else if (!isPump && d.price < d.low20 * 1.02) breakScore = 8; 
+    else breakScore = 5;
+    
+    checklist.push({ 
+      icon: breakScore >= 12 ? 'pass' : (breakScore >= 7 ? 'warn' : 'fail'), 
+      text: `<strong>20 mum</strong> ${d.price > d.high20 ? 'zirve KIRILDI' : (d.price < d.low20 ? 'dip KIRILDI' : 'aralıkta')}`, 
+      score: breakScore, max: 15 
+    }); 
+    totalScore += breakScore; maxScore += 15;
+    
+    let botScore = 0; 
+    const signals = []; 
+    if (isPump && d.rsi < 30) { botScore += 3; signals.push('RSI oversold'); } 
+    else if (!isPump && d.rsi > 70) { botScore += 3; signals.push('RSI overbought'); }
+    
+    checklist.push({ 
+      icon: botScore >= 3 ? 'bot' : 'info', 
+      text: `<strong>Bot</strong> ${botScore >= 3 ? 'UYUMLU' : 'nötr'} ${signals.length > 0 ? '(' + signals.join(', ') + ')' : ''}`, 
+      score: botScore, max: 6, aligns: botScore >= 3 
+    }); 
+    totalScore += botScore; maxScore += 6;
+    
+    if (d.smartPatterns && d.smartPatterns.length > 0) { 
+      const patternBonus = d.smartPatterns.length * 5; 
+      botScore += patternBonus; 
+      harmonicCount++; 
+      checklist.push({ 
+        icon: 'pass', 
+        text: `<strong>🦇 Harmonik/Pine Pattern:</strong> ${d.smartPatterns.map(p => p.description).join(', ')}`, 
+        score: patternBonus, max: 15, aligns: true 
+      }); 
+      totalScore += patternBonus; 
+      maxScore += 15; 
+    }
+    
+    const baseScore = Math.round((totalScore / maxScore) * 100);
+    const advanced = analyzeAdvancedSignals(d, isPump, baseScore);
+    const expectation = calculateExpectation(d, dirResult.direction);
+    const warnings = [];
+    
+    if (isPump && d.rsi > 70 && d.rsi <= 80) { 
+      warnings.unshift({ type: 'caution', text: `⚠️ RSI YÜKSEK (${fmt(d.rsi, 0)}) - Dikkat! 80 üstü engellenecek.` }); 
+    }
+    if (!isPump && d.rsi < 30 && d.rsi >= 20) { 
+      warnings.unshift({ type: 'caution', text: `⚠️ RSI DÜŞÜK (${fmt(d.rsi, 0)}) - Dikkat! 20 altı engellenecek.` }); 
+    }
+    if (lateSignal.isLate) { 
+      warnings.unshift({ type: 'danger', text: `⚠️ Geç sinyal riski!` }); 
+    }
+    
+    const lastMumStrongSignal = Math.abs(d.lastCandleChange) > 2.0 && d.volMult > 2.0;
+    if (lastMumStrongSignal) { 
+      warnings.unshift({ type: 'opportunity', text: `💥 ÇOK GÜÇLÜ SİNYAL - SON MUM! %${fmt(d.lastCandleChange, 2)} + ${fmt(d.volMult, 1)}x Hacim` }); 
+      totalScore = Math.min(100, totalScore + 15); 
+    }
+    
+    if (d.isLongLowerWick) warnings.push({ type: 'danger', text: `📍 AŞAĞI FİTİL (${fmt(d.lowerWickRatio*100,0)}%)` });
+    if (d.isLongUpperWick) warnings.push({ type: 'caution', text: `📍 YUKARI FİTİL (${fmt(d.upperWickRatio*100,0)}%)` });
+    if (d.volMult > 3 && Math.abs(d.lastCandleChange) < 0.5) warnings.push({ type: 'danger', text: `⚠️ LİKİDİTE AVI! ${fmt(d.volMult,1)}× hacim` });
+    if (!expectation.rrValid) warnings.push({ type: 'danger', text: `⚠️ KÖTÜ R:R ORANI! ${expectation.rrText}` });
+    
+    let reasonText = `${dirResult.direction} ${dirResult.confidence} (${dirResult.pumpVotes}P/${dirResult.dumpVotes}D). `;
+    if (lastMumStrongSignal) { reasonText = `💥 ÇOK GÜÇLÜ SON MUM SİNYALİ! ${reasonText}`; }
+    reasonText += `${dirResult.reasons.slice(0, 4).join(' + ')}.`;
+    
+    const strategy = getBestStrategy(d.adx, d.volMult, d.liqData ? d.liqData.lsGlobal : 0.5, d.price, d.high20, d.low20, d.upperWickRatio, d.lowerWickRatio, d.rsi, dirResult.direction, d.smartPatterns);
+    results.push({ 
+      ...d, checklist, warnings, reasonText, baseScore, 
+      direction: dirResult.direction, confidence: dirResult.confidence, 
+      dirResult, expectation, advanced, skip: false, 
+      activeIndicators: dirResult.activeIndicators, strategy, 
+      smartPatterns: d.smartPatterns, isLateSignal: lateSignal.isLate, 
+      lastMumStrong: lastMumStrongSignal, isBlocked: false 
+    });
+  });
+  return results;
+}
+
+function updateDisplay() {
+  const topN = parseInt(safeValue('topN', '15')); 
+  const advMin = parseInt(safeValue('advFilter', '0'));
+  const valid = coinData.filter(c => !c.skip);
+  const harmonicPumps = valid.filter(c => c.smartPatterns && c.smartPatterns.length > 0 && c.direction === 'PUMP');
+  const harmonicDumps = valid.filter(c => c.smartPatterns && c.smartPatterns.length > 0 && c.direction === 'DUMP');
+  const applyScoreFilter = advMin > 0;
+  
+  const pumps = valid.filter(c => { 
+    if (c.direction !== 'PUMP') return false; 
+    if (c.baseScore < CONFIG.MIN_SCORE) return false; 
+    if (c.volMult < CONFIG.MIN_VOL_MULT) return false; 
+    if (applyScoreFilter) return c.advanced ? c.advanced.finalScore >= advMin : c.baseScore >= advMin; 
+    return true; 
+  }).sort((a, b) => (b.advanced ? b.advanced.finalScore : b.baseScore) - (a.advanced ? a.advanced.finalScore : a.baseScore)).slice(0, topN);
+  
+  const dumps = valid.filter(c => { 
+    if (c.direction !== 'DUMP') return false; 
+    if (c.baseScore < CONFIG.MIN_SCORE) return false; 
+    if (c.volMult < CONFIG.MIN_VOL_MULT) return false; 
+    if (applyScoreFilter) return c.advanced ? c.advanced.finalScore >= advMin : c.baseScore >= advMin; 
+    return true; 
+  }).sort((a, b) => (b.advanced ? b.advanced.finalScore : b.baseScore) - (a.advanced ? a.advanced.finalScore : a.baseScore)).slice(0, topN);
+  
+  const volumes = coinData.filter(c => c.volMult >= CONFIG.MIN_VOL_MULT).sort((a, b) => b.volMult - a.volMult).slice(0, topN);
+  
+  const pumpList = document.getElementById('pumpList'); 
+  const dumpList = document.getElementById('dumpList'); 
+  const volumeList = document.getElementById('volumeList');
+  
+  const harmonicPumpHtml = harmonicPumps.length > 0 ? `<div class="smart-section-header"><strong>🦇 HARMONİK/PINE SİNYALLER (${harmonicPumps.length}) - Altın Vurgulu Yüksek Olasılık</strong></div>` + harmonicPumps.map((c, i) => renderSignalCard(c, i, false)).join('') : '';
+  const harmonicDumpHtml = harmonicDumps.length > 0 ? `<div class="smart-section-header"><strong>🦇 HARMONİK/PINE SİNYALLER (${harmonicDumps.length}) - Altın Vurgulu Yüksek Olasılık</strong></div>` + harmonicDumps.map((c, i) => renderSignalCard(c, i, true)).join('') : '';
+  
+  if (pumpList) pumpList.innerHTML = harmonicPumpHtml + (pumps.length ? pumps.map((c, i) => renderSignalCard(c, i, false)).join('') : `<div class="empty-list">Şu an PUMP sinyali yok</div>`);
+  if (dumpList) dumpList.innerHTML = harmonicDumpHtml + (dumps.length ? dumps.map((c, i) => renderSignalCard(c, i, true)).join('') : `<div class="empty-list">Şu an DUMP sinyali yok</div>`);
+  if (volumeList) volumeList.innerHTML = volumes.length ? volumes.map((d, i) => renderVolumeCard(d, i)).join('') : `<div class="empty-list">Hacim anomalisi yok</div>`;
+  
+  const trades = [...pumps, ...dumps].filter(c => c.expectation && c.expectation.rrValid).sort((a, b) => (b.advanced ? b.advanced.finalScore : b.baseScore) - (a.advanced ? a.advanced.finalScore : a.baseScore)).slice(0, 3);
+  const tradeSection = document.getElementById('tradeRecommendations');
+  
+  if (tradeSection) { 
+    if (trades.length > 0) { 
+      tradeSection.style.display = 'block'; 
+      const tc = document.getElementById('tradeCards'); 
+      if (tc) tc.innerHTML = trades.map((c, i) => renderTradeCard(c, i + 1)).join(''); 
+    } else {
+      tradeSection.style.display = 'none'; 
+    }
+  }
+  
+  const signalsToTrack = [...harmonicPumps, ...harmonicDumps, ...pumps, ...dumps].filter(c => c.expectation && c.expectation.rrValid).slice(0, 3);
+  signalsToTrack.forEach(c => { 
+    const finalScore = c.advanced ? c.advanced.finalScore : c.baseScore; 
+    const advScore = c.advanced ? c.advanced.advScore : 0; 
+    const isHarmonic = c.smartPatterns && c.smartPatterns.length > 0; 
+    const minScore = isHarmonic ? 50 : 60; 
+    const minAdv = isHarmonic ? 40 : 50; 
+    if (finalScore >= minScore && advScore >= minAdv && c.confidence === 'GÜÇLÜ') { 
+      const existing = learningData.signals.find(s => s.symbol === c.symbol && s.result === 'PENDING'); 
+      if (!existing) { 
+        trackNewSignal(c, c.strategy); 
+        const smartLabel = isHarmonic ? '🦇 HARMONİK/PINE' : ''; 
+        log(`🎯 ${c.symbol} ${c.strategy.toUpperCase()} ${smartLabel} sinyal`, 'success'); 
+      } 
+    } 
+  });
+  
+  const statPump = document.getElementById('statPump'); 
+  const statDump = document.getElementById('statDump');
+  if (statPump) statPump.textContent = valid.filter(c => c.direction === 'PUMP').length;
+  if (statDump) statDump.textContent = valid.filter(c => c.direction === 'DUMP').length;
+  updateLearningDisplay();
+}
+
+async function scanOnce() { 
+  if (isScanning) return; 
+  isScanning = true; 
+  const statStatus = document.getElementById('statStatus'); 
+  if (statStatus) statStatus.textContent = '🔄'; 
+  try { 
+    coinData = detectAnomalies(await fetchAllData()); 
+    updateDisplay(); 
+    if (statStatus) statStatus.textContent = '✅'; 
+  } catch (e) { 
+    log('❌ Hata: ' + e.message, 'error'); 
+    if (statStatus) statStatus.textContent = ''; 
+  } 
+  isScanning = false; 
+  const startBtn = document.getElementById('startBtn'); 
+  const stopBtn = document.getElementById('stopBtn'); 
+  if (startBtn) startBtn.disabled = botInterval !== null; 
+  if (stopBtn) stopBtn.disabled = botInterval === null; 
+}
+
+function startBot() {
+  if (botInterval) return;
+  log('🚀 Zeus Trade Bot v17.9 FINAL başlatıldı - Tüm özellikler aktif', 'success');
+  scanOnce();
+  botInterval = setInterval(scanOnce, CONFIG.refreshInterval);
+  checkInterval = setInterval(checkPendingSignals, CONFIG.checkInterval);
+  startNewsMonitor();
+  const startBtn = document.getElementById('startBtn'); 
+  const stopBtn = document.getElementById('stopBtn');
+  if (startBtn) startBtn.disabled = true; 
+  if (stopBtn) stopBtn.disabled = false;
+}
+
+function stopBot() {
+  clearInterval(botInterval); botInterval = null;
+  clearInterval(checkInterval); checkInterval = null;
+  stopNewsMonitor();
+  log('⏹️ Bot durduruldu', 'warn');
+  const startBtn = document.getElementById('startBtn'); 
+  const stopBtn = document.getElementById('stopBtn'); 
+  const statStatus = document.getElementById('statStatus');
+  if (startBtn) startBtn.disabled = false; 
+  if (stopBtn) stopBtn.disabled = true; 
+  if (statStatus) statStatus.textContent = '⏸️';
+}
+
+async function refreshData() { 
+  log('🔄 Manuel yenileme...', 'info'); 
+  await scanOnce(); 
+}
+
+// --- UZAKTAN KAPATMA ANAHTARI (KILL-SWITCH) ---
+async function checkRemoteStatus() {
+    try {
+        let response = await fetch('https://gist.githubusercontent.com/fiptas78/10a3815dbff14706f15f86cc00ccbdbc/raw/d7f58d17ff14ec335ebc5124818e08918e3ab237/ZeusTradeBot.json');
+        let data = await response.json();
+        
+        if (data.status === "pasif") {
+            document.body.innerHTML = "<h1 style='color:red; text-align:center; margin-top:20vh;'>Bu yazılımın lisans süresi dolmuş veya erişimi engellenmiştir.</h1>";
+            throw new Error("Sistem devre dışı bırakıldı.");
+        }
+    } catch (error) {
+        console.log("Lisans kontrolü yapılırken bir sorun oluştu veya sistem çevrimdışı.");
+    }
+}
+
+// SAYFA AÇILDIĞINDA BURADAN TETİKLEMELİYİZ:
+checkRemoteStatus(); 
+
+loadLearningData();
+loadTelegramSettings();
+updateLearningDisplay();
+updateLiquidityDisplay();
+renderAdminPendingList();
+scanOnce();
+// --- YENİ EKLENECEK FONKSİYONLAR ---
+function renderAdminPendingList() {
+    const tbody = document.getElementById('adminPendingListBody');
+    if(!tbody) return;
+    
+    let pendingUsers = JSON.parse(localStorage.getItem('zeusPendingRequests')) || [];
+    
+    if(pendingUsers.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:#8b949e;">Onay bekleyen talep yok.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = pendingUsers.map((u, index) => `
+        <tr>
+            <td><b>${u.user}</b></td>
+            <td><code>${u.pass}</code></td>
+            <td>
+                <button onclick="approvePendingUser(${index})" style="background:#238636; padding:4px 10px; font-size:11px; margin-right:5px;">Onayla</button>
+                <button onclick="rejectPendingUser(${index})" style="background:#da3633; padding:4px 10px; font-size:11px;">Reddet</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function approvePendingUser(index) {
+    let pendingUsers = JSON.parse(localStorage.getItem('zeusPendingRequests')) || [];
+    const userToApprove = pendingUsers[index];
+    
+    if(userToApprove) {
+        appUsers.push({ user: userToApprove.user, pass: userToApprove.pass, role: 'member' });
+        saveUsers();
+        
+        pendingUsers.splice(index, 1);
+        localStorage.setItem('zeusPendingRequests', JSON.stringify(pendingUsers));
+        
+        renderAdminPendingList();
+        renderAdminUserList();
+        alert(`"${userToApprove.user}" onaylandı ve üyeliği aktifleşti!`);
+    }
+}
+
+function rejectPendingUser(index) {
+    let pendingUsers = JSON.parse(localStorage.getItem('zeusPendingRequests')) || [];
+    pendingUsers.splice(index, 1);
+    localStorage.setItem('zeusPendingRequests', JSON.stringify(pendingUsers));
+    renderAdminPendingList();
+}
+// ------------------------------------
+</script>
+
+<!-- KODU ŞİFRELEME VE GİZLEME (OBFUSCATION WRAPPER) -->
+<script>
+eval(atob('Z2xvYmFsX3NlY3VyZV9jb3JlID0gdHJ1ZQo='));
+</script>
+
+</body>
+</html>
