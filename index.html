@@ -334,8 +334,6 @@ button.stop { background: #da3633; }
             
             <button onclick="handleRegister()" style="width:100%; background:#1f6feb; color:white; border:none; padding:12px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:14px;">Kayıt Talebi Gönder 📝</button>
         </div>
-
-        
     </div>
 </div>
 
@@ -353,7 +351,7 @@ button.stop { background: #da3633; }
 <!-- YÖNETİCİ PANELİ (Sadece admin girince görünür) -->
 <div class="admin-panel" id="adminPanel"> <h2>🛠️ YÖNETİCİ & ÜYE PANELİ</h2>
 
-<!-- BEKLEYEN KAYIT TALEPLERİ BÖLÜMÜ (EKLENDİ) -->
+<!-- BEKLEYEN KAYIT TALEPLERİ BÖLÜMÜ -->
 <div style="margin-bottom:20px; background:#0d1117; padding:12px; border-radius:8px; border:1px solid #30363d;">
 <div style="font-size:13px; font-weight:bold; color:#f78166; margin-bottom:8px;">⏳ Onay Bekleyen Kayıt İstekleri:</div>
 <table class="admin-users-table">
@@ -564,7 +562,7 @@ ANLIK HABER SİNYALLERİ (NEWS PUMP/DUMP)
 </div>
 
 <script>
-// Üye Veritabanı ve Yönetim Fonksiyonları
+// --- ÜYE VERİTABANI VE BULUT SENKRONİZASYONU ---
 let appUsers = [
     { user: 'Zeus78', pass: 'Kanguru35iptas.!', role: 'admin' }
 ];
@@ -572,11 +570,7 @@ let appUsers = [
 function loadUsers() {
     try {
         const saved = localStorage.getItem('zeusBotUsers');
-        if (saved) {
-            appUsers = JSON.parse(saved);
-        } else {
-            saveUsers();
-        }
+        if (saved) { appUsers = JSON.parse(saved); }
     } catch(e) {}
 }
 
@@ -584,6 +578,165 @@ function saveUsers() {
     try {
         localStorage.setItem('zeusBotUsers', JSON.stringify(appUsers));
     } catch(e) {}
+}
+
+const JSONBIN_CONFIG = {
+    binId: '6ad7cb8effd5d160537d3724',
+    apiKey: '$2a$10$/EImO8Q329.yVKgusjkgvu4ByL/QrFTy.k1Hq/RoQiYy5.ySxPVYa',
+    apiUrl: function() { return `https://api.jsonbin.io/v3/b/${this.binId}`; }
+};
+
+async function fetchCloudData() {
+    try {
+        const res = await fetch(`${JSONBIN_CONFIG.apiUrl()}/latest`, {
+            headers: { 'X-Master-Key': JSONBIN_CONFIG.apiKey }
+        });
+        if (res.ok) {
+            const data = await res.json();
+            return data.record;
+        }
+    } catch(e) { console.error("Bulut veri çekme hatası:", e); }
+    return null;
+}
+
+async function saveCloudData(recordData) {
+    try {
+        const res = await fetch(JSONBIN_CONFIG.apiUrl(), {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Master-Key': JSONBIN_CONFIG.apiKey
+            },
+            body: JSON.stringify(recordData)
+        });
+        return res.ok;
+    } catch(e) { console.error("Bulut kaydetme hatası:", e); return false; }
+}
+
+async function handleRegister() {
+    const user = document.getElementById('regUser').value.trim();
+    const pass = document.getElementById('regPass').value.trim();
+
+    if(!user || !pass) {
+        alert('Lütfen kullanıcı adı ve şifre girin!');
+        return;
+    }
+
+    let cloudData = await fetchCloudData() || { users: appUsers, pending: [] };
+    let usersList = cloudData.users || appUsers;
+    let pendingList = cloudData.pending || [];
+
+    if(usersList.some(u => u.user === user)) {
+        alert('Bu kullanıcı adı zaten alınmış!');
+        return;
+    }
+
+    if (pendingList.some(u => u.user === user)) {
+        alert('Bu kullanıcı adı için zaten bekleyen bir onay talebi var!');
+        return;
+    }
+
+    const newPending = { user: user, pass: pass, role: 'member', time: new Date().toLocaleTimeString('tr-TR') };
+    pendingList.push(newPending);
+    cloudData.pending = pendingList;
+    cloudData.users = usersList;
+
+    await saveCloudData(cloudData);
+
+    if (telegramSettings.botToken && telegramSettings.chatId) {
+        const tgMsg = `📝 *YENİ ÜYE KAYIT TALEBİ!*\n\n👤 *Kullanıcı:* \`${user}\`\n🔑 *Şifre:* \`${pass}\`\n⏰ *Saat:* ${newPending.time}\n\n👉 *Yönetici panelinizden Onayla butonuna basabilirsiniz.*`;
+        sendTelegramMessage(tgMsg);
+    }
+
+    alert('Kayıt talebiniz alındı ve yöneticiye iletildi! Onaylandıktan sonra giriş yapabilirsiniz.');
+    switchAuthTab('login');
+}
+
+async function handleLogin() {
+    const user = document.getElementById('loginUser').value.trim();
+    const pass = document.getElementById('loginPass').value.trim();
+
+    let cloudData = await fetchCloudData();
+    if (cloudData && cloudData.users) {
+        appUsers = cloudData.users;
+        saveUsers();
+    } else {
+        loadUsers();
+    }
+
+    const found = appUsers.find(u => u.user === user && u.pass === pass);
+    if(found) {
+        document.getElementById('authOverlay').style.display = 'none';
+        localStorage.setItem('zeusLoggedInUser', user);
+
+        if(found.role === 'admin') {
+            document.getElementById('adminPanel').style.display = 'block';
+            await renderAdminUserList();
+            await renderAdminPendingList();
+        } else {
+            document.getElementById('adminPanel').style.display = 'none';
+        }
+        log(`👤 Kullanıcı girişi başarılı: ${user} (${found.role})`, 'success');
+    } else {
+        alert('Hatalı kullanıcı adı veya şifre!');
+    }
+}
+
+async function renderAdminPendingList() {
+    const tbody = document.getElementById('adminPendingListBody');
+    if(!tbody) return;
+
+    let cloudData = await fetchCloudData();
+    let pendingUsers = cloudData && cloudData.pending ? cloudData.pending : [];
+
+    if(pendingUsers.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:#8b949e;">Onay bekleyen talep yok.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = pendingUsers.map((u, index) => `
+        <tr>
+            <td><b>${u.user}</b></td>
+            <td><code>${u.pass}</code></td>
+            <td>
+                <button onclick="approvePendingUser(${index})" style="background:#238636; padding:4px 10px; font-size:11px; margin-right:5px; cursor:pointer;">Onayla</button>
+                <button onclick="rejectPendingUser(${index})" style="background:#da3633; padding:4px 10px; font-size:11px; cursor:pointer;">Reddet</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+async function approvePendingUser(index) {
+    let cloudData = await fetchCloudData() || { users: appUsers, pending: [] };
+    let pendingUsers = cloudData.pending || [];
+    const userToApprove = pendingUsers[index];
+
+    if(userToApprove) {
+        cloudData.users = cloudData.users || appUsers;
+        cloudData.users.push({ user: userToApprove.user, pass: userToApprove.pass, role: 'member' });
+        cloudData.pending.splice(index, 1);
+
+        appUsers = cloudData.users;
+        saveUsers();
+        await saveCloudData(cloudData);
+
+        if (telegramSettings.botToken && telegramSettings.chatId) {
+            sendTelegramMessage(`✅ *ÜYELİK ONAYLANDI:* \`${userToApprove.user}\` artık sisteme giriş yapabilir.`);
+        }
+
+        await renderAdminPendingList();
+        await renderAdminUserList();
+        alert(`"${userToApprove.user}" onaylandı ve üyeliği aktifleşti!`);
+    }
+}
+
+async function rejectPendingUser(index) {
+    let cloudData = await fetchCloudData() || { users: appUsers, pending: [] };
+    if (cloudData.pending) {
+        cloudData.pending.splice(index, 1);
+        await saveCloudData(cloudData);
+    }
+    await renderAdminPendingList();
 }
 
 function switchAuthTab(tab) {
@@ -609,68 +762,8 @@ function switchAuthTab(tab) {
     }
 }
 
-function handleLogin() {
-    loadUsers();
-    const user = document.getElementById('loginUser').value.trim();
-    const pass = document.getElementById('loginPass').value.trim();
-    
-    const found = appUsers.find(u => u.user === user && u.pass === pass);
-    if(found) {
-        document.getElementById('authOverlay').style.display = 'none';
-        
-        // --- BURAYI EKLEYİN: Giriş yaptığını hatırla ---
-        localStorage.setItem('zeusLoggedInUser', user);
-        // ---------------------------------------------
-
-        if(found.role === 'admin') {
-            document.getElementById('adminPanel').style.display = 'block';
-            renderAdminUserList();
-            renderAdminPendingList();
-        } else {
-            document.getElementById('adminPanel').style.display = 'none';
-        }
-        log(`👤 Kullanıcı girişi başarılı: ${user} (${found.role})`, 'success');
-    } else {
-        alert('Hatalı kullanıcı adı veya şifre!');
-    }
-}
-
-function handleRegister() {
-    loadUsers();
-    const user = document.getElementById('regUser').value.trim();
-    const pass = document.getElementById('regPass').value.trim();
-
-    if(!user || !pass) {
-    alert('Lütfen kullanıcı adı ve şifre girin!');
-    return;
-}
-
-    if(appUsers.some(u => u.user === user)) {
-        alert('Bu kullanıcı adı zaten alınmış!');
-        return;
-    }
-
-    // Bekleyenler listesine ekleme kısmı
-    let pendingUsers = JSON.parse(localStorage.getItem('zeusPendingRequests')) || [];
-    
-    if (pendingUsers.some(u => u.user === user)) {
-        alert('Bu kullanıcı adı için zaten bekleyen bir onay talebi var!');
-        return;
-    }
-
-    pendingUsers.push({ user: user, pass: pass, role: 'member' });
-    localStorage.setItem('zeusPendingRequests', JSON.stringify(pendingUsers));
-
-    alert('Kayıt talebiniz alındı! Yönetici onayladıktan sonra giriş yapabilirsiniz.');
-    
-    switchAuthTab('login');
-}
-
 function handleLogout() {
-    // --- BURAYI EKLEYİN: Hafızadaki oturumu sil ---
     localStorage.removeItem('zeusLoggedInUser');
-    // -------------------------------------------
-
     document.getElementById('authOverlay').style.display = 'flex';
     document.getElementById('loginUser').value = '';
     document.getElementById('loginPass').value = '';
@@ -943,6 +1036,7 @@ coinMap: {
 'babydoge': 'BABYDOGEUSDT', 'cat': 'CATUSDT', 'dog': 'DOGUSDT'
 }
 };
+
 function analyzeNewsWithAI(title, description) {
 const text = (title + ' ' + description).toLowerCase();
 let verbScore = 0;
@@ -997,10 +1091,12 @@ confidence: confidence,
 reason: mainVerb ? `Ana fiil: "${mainVerb}" (${verbScore > 0 ? '+' : ''}${verbScore.toFixed(1)})` : 'Fiil tespit edilemedi'
 };
 }
+
 function safeValue(id, fallback) {
 const el = document.getElementById(id);
 return el && el.value !== undefined ? el.value : fallback;
 }
+
 function saveLearningData() { try { localStorage.setItem('zeusBotLearning_v179', JSON.stringify(learningData)); } catch(e) {} }
 function loadLearningData() {
 try {
@@ -1008,12 +1104,14 @@ const saved = localStorage.getItem('zeusBotLearning_v179');
 if (saved) { const parsed = JSON.parse(saved); learningData = { ...learningData, ...parsed }; }
 } catch(e) {}
 }
+
 function clearLearningData() {
 if (confirm('Tüm öğrenme verisi silinecek. Emin misiniz?')) {
 learningData = { signals: [], indicatorPerformance: {}, strategyPerformance: { scalping: {wins:0, losses:0, avgPnl:0}, swing: {wins:0, losses:0, avgPnl:0}, breakout: {wins:0, losses:0, avgPnl:0}, liquidity: {wins:0, losses:0, avgPnl:0}, harmonic: {wins:0, losses:0, avgPnl:0} }, dynamicWeights: { MACD: 1.0, RSI: 1.5, Bollinger: 1.0, Volume: 1.0, Pattern: 1.0, ADX: 1.5, EMA: 1.0, Momentum: 1.0, Liquidity: 1.0, Harmonic: 2.0, PineScript: 1.5 }, autoTunedParams: { tp1Mult: 1.5, tp2Mult: 2.5, tp3Mult: 4.0, slMult: 7.0, strategy: 'scalping', breakoutBanned: true }, lastAutoTune: 0 };
 saveLearningData(); updateLearningDisplay(); log('🧠 Sıfırlandı', 'warn');
 }
 }
+
 function fmt(n, d=2) { return parseFloat(n).toFixed(d); }
 function fmtP(n, d=2) { return parseFloat(n).toFixed(d) + '%'; }
 function fmtPrice(p) {
@@ -1022,6 +1120,7 @@ if (p >= 1) return '$' + parseFloat(p).toFixed(2);
 if (p >= 0.01) return '$' + parseFloat(p).toFixed(4);
 return '$' + parseFloat(p).toFixed(6);
 }
+
 function fmtVol(v) {
 if (!v) return '0$';
 if (v >= 1e9) return (v/1e9).toFixed(2) + 'B$';
@@ -1029,6 +1128,7 @@ if (v >= 1e6) return (v/1e6).toFixed(2) + 'M$';
 if (v >= 1e3) return (v/1e3).toFixed(2) + 'K$';
 return v.toFixed(0) + '$';
 }
+
 function log(msg, type='info') {
 const time = new Date().toLocaleTimeString('tr-TR');
 const colors = { info: '#58a6ff', warn: '#d29922', error: '#da3633', success: '#3fb950' };
@@ -1037,10 +1137,12 @@ if (logEntries.length > 50) logEntries.pop();
 const logEl = document.getElementById('log');
 if (logEl) logEl.innerHTML = logEntries.slice(0, 30).map(e => `<div class="log-entry"><span class="time">[${e.time}]</span> <span style="color:${colors[e.type] || '#c9d1d9'}">${e.msg}</span></div>`).join('');
 }
+
 async function fetchJSON(url) {
 try { const r = await fetch(url); if (r.ok) return await r.json(); } catch(e) {}
 return null;
 }
+
 async function batchFetch(items, fn, batchSize = CONFIG.BATCH_SIZE, delay = CONFIG.BATCH_DELAY) {
 const results = [];
 const total = items.length;
@@ -1057,6 +1159,7 @@ if (i + batchSize < total) await new Promise(r => setTimeout(r, delay));
 if (progressBar) progressBar.style.display = 'none';
 return results;
 }
+
 async function fetchAndAnalyzeNews() {
 const newsStatusEl = document.getElementById('newsStatus');
 if (newsStatusEl) { newsStatusEl.textContent = 'Yükleniyor...'; newsStatusEl.className = 'news-status loading'; }
@@ -1119,6 +1222,7 @@ newsErrorCount = 0;
 if (newsStatusEl) { newsStatusEl.textContent = `Aktif (${successCount} kaynak, ${allItems.length} haber)`; newsStatusEl.className = 'news-status active'; }
 processNewsItems(allItems);
 }
+
 function processNewsItems(items) {
 const newsListEl = document.getElementById('newsList');
 if (!newsListEl) return;
@@ -1178,6 +1282,7 @@ ${coinBadges}
 log('ℹ️ Analiz edilebilir haber bulunamadı (nötr haberler atlandı)', 'info');
 }
 }
+
 function injectNewsBoost(coins, direction, strength) {
 const expiry = Date.now() + 3600000;
 coins.forEach(coinSymbol => {
@@ -1187,12 +1292,14 @@ else newsBoosts[coinSymbol].dump += strength * 5;
 newsBoosts[coinSymbol].expiry = expiry;
 });
 }
+
 function startNewsMonitor() {
 if (newsInterval) return;
 fetchAndAnalyzeNews();
 newsInterval = setInterval(fetchAndAnalyzeNews, NEWS_CONFIG.checkInterval);
 log('📰 Haber Analizi başlatıldı (CoinGecko + Binance - CORS AÇIK)', 'success');
 }
+
 function stopNewsMonitor() {
 if (newsInterval) {
 clearInterval(newsInterval);
@@ -1200,6 +1307,7 @@ newsInterval = null;
 log('⏹️ Haber Analizi durduruldu', 'warn');
 }
 }
+
 function updateLiquidityCommentary() {
 const contentEl = document.getElementById('liqCommentaryContent');
 if (!contentEl) return;
@@ -1256,6 +1364,7 @@ ${shortCoins.length > 0 ? `<li><strong>Short Squeeze Fırsatı:</strong> ${short
 </div>
 <div class="liq-golden-rule">Altın Kural: LS Ratio > 3 olan coin'lerde SHORT, LS Ratio < 1 olan coin'lerde LONG düşünün. Ama her zaman stop-loss kullanın!</div>`;
 }
+
 function calculateRSIArray(closes, period=14) {
 if (closes.length < period + 1) return new Array(closes.length).fill(50);
 const rsiArr = new Array(closes.length).fill(50);
@@ -1266,6 +1375,7 @@ rsiArr[period] = 100 - (100 / (1 + avgGain / (avgLoss || 1)));
 for (let i = period + 1; i < closes.length; i++) { const c = closes[i] - closes[i-1]; avgGain = (avgGain * (period - 1) + (c > 0 ? c : 0)) / period; avgLoss = (avgLoss * (period - 1) + (c < 0 ? -c : 0)) / period; rsiArr[i] = 100 - (100 / (1 + avgGain / (avgLoss || 1))); }
 return rsiArr;
 }
+
 function calculateADX(klines, period=14) {
 if (klines.length < period * 2) return { adx: 0, diPlus: 0, diMinus: 0 };
 let trSum = 0, dmPlusSum = 0, dmMinusSum = 0;
@@ -1276,6 +1386,7 @@ let atr = trSum / period; let diPlus = (dmPlusSum / period) / atr * 100; let diM
 for (let i = period; i < trs.length; i++) { atr = (atr * (period - 1) + trs[i]) / period; const sDmP = (dmPlusSum * (period - 1) + dmPluses[i]) / period; const sDmM = (dmMinusSum * (period - 1) + dmMinuses[i]) / period; dmPlusSum = sDmP; dmMinusSum = sDmM; diPlus = sDmP / atr * 100; diMinus = sDmM / atr * 100; dx = Math.abs(diPlus - diMinus) / (diPlus + diMinus || 1) * 100; adx = (adx * (period - 1) + dx) / period; }
 return { adx: Math.round(adx * 10) / 10, diPlus: Math.round(diPlus * 10) / 10, diMinus: Math.round(diMinus * 10) / 10 };
 }
+
 function detectPineSignals(d) {
 let pumpVotes = 0, dumpVotes = 0; const reasons = [], activeIndicators = []; const closes = d.closes; const highs = d.klines.map(k => parseFloat(k[2])); const lows = d.klines.map(k => parseFloat(k[3])); const volumes = d.klines.map(k => parseFloat(k[5])); const n = closes.length;
 if (n < 20) return { pumpVotes, dumpVotes, reasons, activeIndicators };
@@ -1295,6 +1406,7 @@ if (currClose < swingLow && prevClose >= swingLow && currentRsi < 50) { dumpVote
 if (n >= 3) { const h2 = highs[n-3], l2 = lows[n-3]; const h0 = highs[n-1], l0 = lows[n-1]; if (h2 < l0) { pumpVotes += 2; reasons.push("🟩 FVG: Boşluk Kırılımı (AL)"); activeIndicators.push("FVG_Bull"); } if (l2 > h0) { dumpVotes += 2; reasons.push("🟥 FVG: Boşluk Kırılımı (SAT)"); activeIndicators.push("FVG_Bear"); } }
 return { pumpVotes, dumpVotes, reasons, activeIndicators };
 }
+
 function detectHarmonicPatterns(klines) {
 const patterns = []; const tolerance = 0.06;
 const findPivots = (bars, isHigh) => { const pivots = []; for (let i = 3; i < bars.length - 3; i++) { const current = isHigh ? parseFloat(bars[i][2]) : parseFloat(bars[i][3]); const isPivot = isHigh ? current > parseFloat(bars[i-1][2]) && current > parseFloat(bars[i-2][2]) && current > parseFloat(bars[i-3][2]) && current > parseFloat(bars[i+1][2]) && current > parseFloat(bars[i+2][2]) && current > parseFloat(bars[i+3][2]) : current < parseFloat(bars[i-1][3]) && current < parseFloat(bars[i-2][3]) && current < parseFloat(bars[i-3][3]) && current < parseFloat(bars[i+1][3]) && current < parseFloat(bars[i+2][3]) && current < parseFloat(bars[i+3][3]); if (isPivot) pivots.push({ index: i, price: current, time: bars[i][0] }); } return pivots; };
@@ -1304,6 +1416,7 @@ for (let i = 0; i < Math.min(5, lows.length); i++) { for (let j = 0; j < Math.mi
 for (let i = 0; i < Math.min(5, highs.length); i++) { for (let j = 0; j < Math.min(5, lows.length); j++) { for (let k = 0; k < Math.min(5, highs.length); k++) { for (let l = 0; l < Math.min(5, lows.length); l++) { if (highs[i].index < lows[j].index && lows[j].index < highs[k].index && highs[k].index < lows[l].index) { const pat = checkPattern(highs[i], lows[j], highs[k], lows[l], false); if (pat) patterns.push(pat); } } } } }
 return patterns.filter((v,i,a) => a.findIndex(t => (t.type === v.type && Math.abs(t.targetPrice - v.targetPrice) < (v.targetPrice * 0.01))) === i);
 }
+
 function generatePatternChart(klines, smartPatterns, direction) {
 if (!klines || klines.length < 20) return '';
 const chartWidth = 320; const chartHeight = 140; const padding = { top: 10, right: 10, bottom: 20, left: 10 };
@@ -1322,6 +1435,7 @@ svg += `<line x1="${padding.left}" y1="${lastPriceY}" x2="${chartWidth - padding
 svg += `<text x="${padding.left + 2}" y="${lastPriceY - 3}" fill="${lastPriceColor}" font-size="8" font-weight="bold">${fmtPrice(lastPrice)}</text>`;
 svg += `</svg>`; return svg;
 }
+
 function renderSignalCard(c, i, isDump) {
 const cardClass = isDump ? 'dump-card' : 'pump-card'; const dirClass = isDump ? 'short' : 'long'; const dirLabel = isDump ? 'SHORT' : 'LONG'; const dirIcon = isDump ? '🔴' : '🟢'; const scoreClass = isDump ? 'dump-score' : ''; const tfLabel = safeValue('timeframe', '5m'); const rankEmoji = i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : ''));
 let exchangeBadgeHtml = ''; if (c.exchanges && c.exchanges.length === 2) exchangeBadgeHtml = '<span class="exchange-badge badge-both">BN+BY</span>'; else if (c.exchanges && c.exchanges.includes('Binance')) exchangeBadgeHtml = '<span class="exchange-badge badge-binance">BN</span>'; else if (c.exchanges && c.exchanges.includes('Bybit')) exchangeBadgeHtml = '<span class="exchange-badge badge-bybit">BY</span>';
@@ -1373,6 +1487,7 @@ ${c.advanced ? `<div class="adv-section"><div class="adv-header"><span class="ad
 <span>R:R <span class="val ${c.expectation.rrValid ? 'green' : 'red'}">${c.expectation.rrText}${c.expectation.rrValid ? '✓' : ''}</span></span>
 </div></div>`;
 }
+
 function renderTradeCard(c, rank) {
 const isPump = c.direction === 'PUMP'; if (!isPump && c.direction !== 'DUMP') return '';
 const cardClass = isPump ? 'pump-trade' : 'dump-trade'; const dirClass = isPump ? 'long' : 'short'; const dirLabel = isPump ? 'LONG 🟢' : 'SHORT 🔴'; const scoreClass = isPump ? 'pump' : 'dump';
@@ -1390,6 +1505,7 @@ const patternChart = c.klines ? generatePatternChart(c.klines, c.smartPatterns, 
 const chartSection = patternChart ? `<div class="trade-chart"><div class="trade-chart-title">📊 Formasyon Grafiği (Son 30 Mum)</div><div style="overflow-x:auto;">${patternChart}</div></div>` : '';
 return `<div class="trade-card ${cardClass} ${!c.expectation.rrValid ? 'bad-rr' : ''} ${isSmartSignal ? 'smart-signal' : ''}"><div class="trade-header"><div class="trade-coin">${rankBadge}${c.symbol.replace('USDT','')}${exchangeBadgeHtml}<span class="trade-direction ${dirClass}">${dirLabel}</span>${c.advanced ? `<span class="adv-grade ${c.advanced.grade.cls}">${c.advanced.grade.label} ${c.advanced.advScore}</span>` : ''}${isSmartSignal ? '<span class="smart-pattern-badge">🦇 HARMONİK/PINE</span>' : ''}</div><div style="text-align:right;"><div class="trade-score ${scoreClass}">${c.baseScore}/100</div>${c.advanced ? `<div style="font-size:10px;color:#8b949e;">Birleşik: <b style="color:#58a6ff;">${c.advanced.finalScore}</b></div>` : ''}</div></div><div class="trade-details"><div class="trade-detail entry"><div class="td-label">📥 GİRİŞ</div><div class="td-value">${fmtPrice(c.price)}</div></div><div class="trade-detail stop"><div class="td-label">🛑 STOP</div><div class="td-value" style="color:#f85149">${c.expectation.stopLoss} (-${c.expectation.slPct})</div></div><div class="trade-detail tp1"><div class="td-label">🎯 TP1</div><div class="td-value" style="color:#3fb950">${c.expectation.tp1} (+${c.expectation.tp1Pct})</div></div><div class="trade-detail tp2"><div class="td-label">🎯 TP2</div><div class="td-value" style="color:#58a6ff">${c.expectation.tp2} (+${c.expectation.tp2Pct})</div></div><div class="trade-detail tp3"><div class="td-label">🏆 TP3</div><div class="td-value" style="color:#d29922">${c.expectation.tp3} (+${c.expectation.tp3Pct})</div></div><div class="trade-detail rr ${rrClass}"><div class="td-label">📊 R:R</div><div class="td-value" style="color:${c.expectation.rrValid ? '#bc8cff' : '#f85149'}">${c.expectation.rrText} ${!c.expectation.rrValid ? '❌' : '✓'}</div></div></div>${rrWarning}${smartPatternHtml}${chartSection}<div class="trade-reason"><strong>📝 Neden:</strong> ${c.reasonText}<br><br><strong>💡 Strateji:</strong> ${strategy}<br><br><strong>📐 Pozisyon:</strong> \%${riskPercent} risk ile ${positionSize}x${c.advanced ? `<br><br><strong>🚀 Teyit:</strong> ${c.advanced.grade.label} (${c.advanced.advScore}/100)` : ''}${liqWarning}</div>${(c.warnings.length > 0 || (c.advanced && c.advanced.advWarnings.length > 0)) ? `<div class="trade-warnings"><strong>⚠️ Uyarılar:</strong><ul>${c.warnings.map(w => `<li>${w.text}</li>`).join('')} ${(c.advanced ? c.advanced.advWarnings : []).map(w => `<li>${w.text}</li>`).join('')}</ul></div>` : ''}</div>`;
 }
+
 function renderVolumeCard(d, i) {
 const volMult = d.volMult; const lastCandleChange = d.lastCandleChange; const isBullishCandle = lastCandleChange > 0;
 let anomalyLevel, anomalyClass; if (volMult >= 5) { anomalyLevel = 'AŞIRI'; anomalyClass = 'anomaly-extreme'; } else if (volMult >= 3) { anomalyLevel = 'YÜKSEK'; anomalyClass = 'anomaly-high'; } else if (volMult >= 1.5) { anomalyLevel = 'ORTA'; anomalyClass = 'anomaly-moderate'; } else { anomalyLevel = 'NORMAL'; anomalyClass = 'anomaly-moderate'; }
@@ -1400,33 +1516,61 @@ const tfLabel = safeValue('timeframe', '5m'); const rankClass = i === 0 ? 'top1'
 let exchangeBadgeHtml = ''; if (d.exchanges && d.exchanges.length === 2) exchangeBadgeHtml = '<span class="exchange-badge badge-both">BN+BY</span>'; else if (d.exchanges && d.exchanges.includes('Binance')) exchangeBadgeHtml = '<span class="exchange-badge badge-binance">BN</span>'; else if (d.exchanges && d.exchanges.includes('Bybit')) exchangeBadgeHtml = '<span class="exchange-badge badge-bybit">BY</span>';
 return `<div class="volume-card ${isNeedle ? 'bullish' : (isBullishCandle ? 'bullish' : 'bearish')}"><div class="vol-header"><div class="vol-coin"><span class="vol-rank ${rankClass}">${i+1}</span><span class="vol-name">${d.symbol.replace('USDT','')}</span>${exchangeBadgeHtml}<span style="background:#30363d;padding:2px 6px;border-radius:4px;font-size:10px;">${tfLabel}</span><span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:bold;${anomalyClass === 'anomaly-extreme' ? 'background:#da3633;color:white;' : (anomalyClass === 'anomaly-high' ? 'background:#d29922;color:#0d1117;' : 'background:#30363d;color:#c9d1d9;')}">${anomalyLevel}</span></div><div style="text-align:right;"><div class="vol-mult-value ${multClass}">${fmt(volMult, 2)}×</div><div class="vol-mult-label">${arrow} Hacim</div></div></div><div class="vol-stats"><div class="vol-stat"><div class="vs-label">Son Mum</div><div class="vs-value" style="color:${lastCandleChange >= 0 ? '#3fb950' : '#f85149'}">${lastCandleChange >= 0 ? '+' : ''}${fmt(lastCandleChange, 2)}%</div></div><div class="vol-stat"><div class="vs-label">Fiyat</div><div class="vs-value">${fmtPrice(d.price)}</div></div><div class="vol-stat"><div class="vs-label">RSI</div><div class="vs-value" style="color:${d.rsi > 70 ? '#f85149' : (d.rsi < 30 ? '#3fb950' : '#f0f6fc')}">${fmt(d.rsi, 0)}</div></div></div><div style="margin-bottom:6px;"><div style="display:flex;justify-content:space-between;font-size:10px;color:#8b949e;margin-bottom:3px;"><span>Ort. Hacme Göre</span></div><div class="vol-bar"><div class="vol-bar-fill ${barClass}" style="width:${barPercent}%"></div></div></div><div class="vol-comment ${commentClass}">${comment}</div></div>`;
 }
+
 async function fetchLiquidityData(symbol) { const [lsGlobal, lsTop, takerRatio] = await Promise.all([ fetchJSON(`${CONFIG.apiBinanceFutures}/futures/data/globalLongShortAccountRatio?symbol=${symbol}&period=5m&limit=10`), fetchJSON(`${CONFIG.apiBinanceFutures}/futures/data/topLongShortAccountRatio?symbol=${symbol}&period=5m&limit=10`), fetchJSON(`${CONFIG.apiBinanceFutures}/futures/data/takerlongshortratio?symbol=${symbol}&period=5m&limit=10`) ]); const lsGlobalVal = lsGlobal && lsGlobal.length > 0 ? parseFloat(lsGlobal[lsGlobal.length-1].longShortRatio) : 0.5; const lsTopVal = lsTop && lsTop.length > 0 ? parseFloat(lsTop[lsTop.length-1].longShortRatio) : 0.5; const takerVal = takerRatio && takerRatio.length > 0 ? parseFloat(takerRatio[takerRatio.length-1].buySellRatio) : 0.5; return { lsGlobal: lsGlobalVal, lsTop: lsTopVal, taker: takerVal }; }
+
 function linearRegression(points) { const n = points.length; if (n < 2) return null; let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0; for (let i = 0; i < n; i++) { sumX += points[i].x; sumY += points[i].y; sumXY += points[i].x * points[i].y; sumXX += points[i].x * points[i].x; } const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX); const intercept = (sumY - slope * sumX) / n; return { slope, intercept }; }
+
 function detectTrendlines(klines, lookback = CONFIG.PATTERN_LOOKBACK) { if (!klines || klines.length < lookback) return { uptrend: null, downtrend: null }; const recent = klines.slice(-lookback); const lows = recent.map((k, i) => ({ x: i, y: parseFloat(k[3]) })); const sortedLows = [...lows].sort((a, b) => a.y - b.y); const bottomLows = sortedLows.slice(0, Math.min(5, Math.floor(lookback / 4))); const highs = recent.map((k, i) => ({ x: i, y: parseFloat(k[2]) })); const sortedHighs = [...highs].sort((a, b) => b.y - a.y); const topHighs = sortedHighs.slice(0, Math.min(5, Math.floor(lookback / 4))); let uptrend = null, downtrend = null; if (bottomLows.length >= 2) { const reg = linearRegression(bottomLows); if (reg && reg.slope > 0) { const lastIdx = lookback - 1; const trendValue = reg.slope * lastIdx + reg.intercept; const lastLow = parseFloat(recent[recent.length-1][3]); const distance = Math.abs(lastLow - trendValue) / trendValue * 100; if (distance < 2) uptrend = { slope: reg.slope, intercept: reg.intercept, value: trendValue, touches: bottomLows.length }; } } if (topHighs.length >= 2) { const reg = linearRegression(topHighs); if (reg && reg.slope < 0) { const lastIdx = lookback - 1; const trendValue = reg.slope * lastIdx + reg.intercept; const lastHigh = parseFloat(recent[recent.length-1][2]); const distance = Math.abs(lastHigh - trendValue) / trendValue * 100; if (distance < 2) downtrend = { slope: reg.slope, intercept: reg.intercept, value: trendValue, touches: topHighs.length }; } } return { uptrend, downtrend }; }
+
 function detectTriangles(klines, lookback = CONFIG.PATTERN_LOOKBACK) { if (!klines || klines.length < lookback) return null; const recent = klines.slice(-lookback); const highs = recent.map(k => parseFloat(k[2])); const lows = recent.map(k => parseFloat(k[3])); const firstHalfHighs = highs.slice(0, Math.floor(lookback/2)); const secondHalfHighs = highs.slice(Math.floor(lookback/2)); const firstHalfLows = lows.slice(0, Math.floor(lookback/2)); const secondHalfLows = lows.slice(Math.floor(lookback/2)); const maxHigh1 = Math.max(...firstHalfHighs); const maxHigh2 = Math.max(...secondHalfHighs); const minLow1 = Math.min(...firstHalfLows); const minLow2 = Math.min(...secondHalfLows); const highDecreasing = maxHigh2 < maxHigh1 * 0.995; const lowIncreasing = minLow2 > minLow1 * 1.005; const highFlat = Math.abs(maxHigh2 - maxHigh1) / maxHigh1 < 0.005; const lowFlat = Math.abs(minLow2 - minLow1) / minLow1 < 0.005; if (highDecreasing && lowIncreasing) return { type: 'symmetrical_triangle', strength: 3, description: 'Simetrik Üçgen' }; if (highFlat && lowIncreasing) return { type: 'ascending_triangle', strength: 3, description: 'Yükselen Üçgen' }; if (highDecreasing && lowFlat) return { type: 'descending_triangle', strength: 3, description: 'Alçalan Üçgen' }; return null; }
+
 function detectRoundingBottom(klines, lookback = 30) { if (!klines || klines.length < lookback) return null; const recent = klines.slice(-lookback); const lows = recent.map(k => parseFloat(k[3])); const closes = recent.map(k => parseFloat(k[4])); const firstHalf = lows.slice(0, Math.floor(lookback/2)); const secondHalf = lows.slice(Math.floor(lookback/2)); const firstHalfTrend = firstHalf[firstHalf.length-1] < firstHalf[0]; const secondHalfTrend = secondHalf[secondHalf.length-1] > secondHalf[0]; const minLow = Math.min(...lows); const minLowIndex = lows.indexOf(minLow); const isMiddle = minLowIndex > lookback * 0.3 && minLowIndex < lookback * 0.7; const currentClose = closes[closes.length-1]; const firstLow = firstHalf[0]; const breakout = currentClose > firstLow * 1.005; if (firstHalfTrend && secondHalfTrend && isMiddle && breakout) { return { type: 'rounding_bottom', direction: 'PUMP', strength: 4, description: `Yuvarlak Dip Kırılımı (${fmtPrice(firstLow)})`, entry: currentClose, target: currentClose * 1.05, stop: minLow * 0.99 }; } return null; }
+
 function detectHorizontalBreakout(klines, lookback = 30) { if (!klines || klines.length < lookback) return null; const recent = klines.slice(-lookback); const closes = recent.map(k => parseFloat(k[4])); const highs = recent.map(k => parseFloat(k[2])); const lows = recent.map(k => parseFloat(k[3])); const volumes = recent.map(k => parseFloat(k[5])); const currentPrice = closes[closes.length-1]; const currentVolume = volumes[volumes.length-1]; const avgVolume = volumes.slice(0, -1).reduce((a,b) => a+b, 0) / (volumes.length-1); const volumeSpike = currentVolume > avgVolume * 1.3; const levels = []; for (let i = 0; i < recent.length; i++) { const high = highs[i]; const low = lows[i]; const mid = (high + low) / 2; let touchCount = 0; for (let j = 0; j < recent.length; j++) { const h = highs[j]; const l = lows[j]; if (Math.abs(h - mid) / mid < 0.003 || Math.abs(l - mid) / mid < 0.003) touchCount++; } if (touchCount >= 3) levels.push({ price: mid, touches: touchCount, type: mid > currentPrice ? 'resistance' : 'support' }); } levels.sort((a, b) => b.touches - a.touches); const breakouts = []; const resistance = levels.find(l => l.type === 'resistance' && l.touches >= 3); if (resistance && currentPrice > resistance.price * 1.005 && volumeSpike) { breakouts.push({ type: 'horizontal_resistance_break', direction: 'PUMP', strength: 4, description: `Yatay Direnç Kırılımı (${fmtPrice(resistance.price)}) -${resistance.touches}x dokunma`, entry: currentPrice, target: currentPrice * 1.03, stop: resistance.price * 0.99 }); } const support = levels.find(l => l.type === 'support' && l.touches >= 3); if (support && currentPrice < support.price * 0.995 && volumeSpike) { breakouts.push({ type: 'horizontal_support_break', direction: 'DUMP', strength: 4, description: `Yatay Destek Kırılımı (${fmtPrice(support.price)}) -${support.touches}x dokunma`, entry: currentPrice, target: currentPrice * 0.97, stop: support.price * 1.01 }); } return breakouts.length > 0 ? breakouts : null; }
+
 function detectAllSmartPatterns(klines) { const patterns = []; const roundingBottom = detectRoundingBottom(klines); if (roundingBottom) patterns.push(roundingBottom); const horizontalBreakouts = detectHorizontalBreakout(klines); if (horizontalBreakouts) patterns.push(...horizontalBreakouts); const triangle = detectTriangles(klines); if (triangle) { const recent = klines.slice(-5); const currentPrice = parseFloat(recent[recent.length-1][4]); const recentHighs = recent.map(k => parseFloat(k[2])); const recentLows = recent.map(k => parseFloat(k[3])); const maxHigh = Math.max(...recentHighs); const minLow = Math.min(...recentLows); if (triangle.type === 'ascending_triangle' && currentPrice > maxHigh) patterns.push({ type: 'triangle_break', direction: 'PUMP', strength: 4, description: `Yükselen Üçgen Yukarı Kırılım` }); if (triangle.type === 'descending_triangle' && currentPrice < minLow) patterns.push({ type: 'triangle_break', direction: 'DUMP', strength: 4, description: `Alçalan Üçgen Aşağı Kırılım` }); } const trendlines = detectTrendlines(klines); if (trendlines.uptrend) { const currentPrice = parseFloat(klines[klines.length-1][4]); if (currentPrice < trendlines.uptrend.value * 0.998) patterns.push({ type: 'uptrend_break', direction: 'DUMP', strength: 3, description: `Yükselen Trend Kırılımı` }); } if (trendlines.downtrend) { const currentPrice = parseFloat(klines[klines.length-1][4]); if (currentPrice > trendlines.downtrend.value * 1.002) patterns.push({ type: 'downtrend_break', direction: 'PUMP', strength: 3, description: `Düşen Trend Kırılımı` }); } return patterns.length > 0 ? patterns : null; }
+
 function analyzeLiquidityZones(klines, symbol) { if (!klines || klines.length < 20) return { longPools: [], shortPools: [] }; const zones = []; const n = klines.length; for (let i = Math.max(0, n - 30); i < n; i++) { const high = parseFloat(klines[i][2]); const low = parseFloat(klines[i][3]); const volume = parseFloat(klines[i][5]); zones.push({ high, low, volume, index: i }); } const pools = []; const processed = new Set(); for (let i = 0; i < zones.length; i++) { if (processed.has(i)) continue; let poolHigh = zones[i].high, poolLow = zones[i].low, poolVolume = zones[i].volume, poolCount = 1; processed.add(i); for (let j = i + 1; j < zones.length; j++) { if (processed.has(j)) continue; if (Math.abs(zones[j].high - poolHigh) / poolHigh < 0.015 || Math.abs(zones[j].low - poolLow) / poolLow < 0.015) { poolHigh = Math.max(poolHigh, zones[j].high); poolLow = Math.min(poolLow, zones[j].low); poolVolume += zones[j].volume; poolCount++; processed.add(j); } } if (poolCount >= 2) pools.push({ high: poolHigh, low: poolLow, mid: (poolHigh + poolLow) / 2, volume: poolVolume, count: poolCount, strength: poolCount * (poolVolume / 1000000), symbol: symbol }); } pools.sort((a, b) => b.strength - a.strength); const currentPrice = parseFloat(klines[n-1][4]); return { longPools: pools.filter(p => p.mid < currentPrice).slice(0, 5), shortPools: pools.filter(p => p.mid > currentPrice).slice(0, 5) }; }
+
 function generateTopLiquidityAlerts(allCoinData) { const rawAlerts = []; allCoinData.forEach(d => { const liq = d.liqData; if (!liq) return; let liqScore = 0, alertText = '', type = 'warning', isUnusual = false; if (liq.lsGlobal > 0.80) { isUnusual = true; liqScore += 150 + (liq.lsGlobal * 100); alertText = `🔴 AŞIRI LONG BİRİKİMİ! LS: ${fmt(liq.lsGlobal, 2)} - DÜŞÜŞ RİSKİ!`; type = 'danger'; } else if (liq.lsGlobal < 0.20) { isUnusual = true; liqScore += 150 + ((1 - liq.lsGlobal) * 100); alertText = `🟢 AŞIRI SHORT BİRİKİMİ! LS: ${fmt(liq.lsGlobal, 2)} - YÜKSELİŞ FIRSATI!`; type = 'opportunity'; } else if (liq.lsGlobal > 0.70) { liqScore += 60 + (liq.lsGlobal * 100); alertText = `📈 Yüksek Long Birikimi. LS: ${fmt(liq.lsGlobal, 2)}`; type = 'warning'; } else if (liq.lsGlobal < 0.30) { liqScore += 60 + ((1 - liq.lsGlobal) * 100); alertText = `🟢 Yüksek Short Birikimi. LS: ${fmt(liq.lsGlobal, 2)}`; type = 'warning'; } if (d.liqZones && d.liqZones.longPools.length > 0) { const nearestLong = d.liqZones.longPools[0]; const distPct = ((d.price - nearestLong.mid) / d.price) * 100; if (distPct < 2.5) { liqScore += nearestLong.strength; if (nearestLong.strength > 100 || nearestLong.volume > 100000000) isUnusual = true; alertText += ` | LONG LİKİDİTESİ: ${fmtPrice(nearestLong.mid)} (${fmt(distPct,2)}% aşağıda) - MİKTAR: ${fmtVol(nearestLong.volume)} = 💰 ${fmtVol(nearestLong.volume * nearestLong.mid)}`; type = 'danger'; } } if (d.liqZones && d.liqZones.shortPools.length > 0) { const nearestShort = d.liqZones.shortPools[0]; const distPct = ((nearestShort.mid - d.price) / d.price) * 100; if (distPct < 2.5) { liqScore += nearestShort.strength; if (nearestShort.strength > 100 || nearestShort.volume > 100000000) isUnusual = true; alertText += ` | SHORT LİKİDİTESİ: ${fmtPrice(nearestShort.mid)} (${fmt(distPct,2)}% yukarıda) - MİKTAR: ${fmtVol(nearestShort.volume)} = 💰 ${fmtVol(nearestShort.volume * nearestShort.mid)}`; type = 'danger'; } } if (liqScore > 30) { if (isUnusual) alertText = "⚡ OLAĞAN DIŞI BİRİKME TESPİT EDİLDİ! " + alertText; rawAlerts.push({ coin: d.symbol, score: liqScore, text: alertText, type: type, isUnusual: isUnusual }); } }); return rawAlerts.sort((a, b) => b.score - a.score).slice(0, 15); }
+
 function calculateEMA(closes, period) { if (closes.length < period) return null; const k = 2 / (period + 1); let ema = closes.slice(0, period).reduce((a,b) => a+b, 0) / period; for (let i = period; i < closes.length; i++) ema = closes[i] * k + ema * (1 - k); return ema; }
+
 function calculateRSI(closes, period=14) { if (closes.length < period + 1) return 50; let gains = 0, losses = 0; for (let i = 1; i <= period; i++) { const c = closes[i] - closes[i-1]; if (c > 0) gains += c; else losses -= c; } let avgGain = gains / period, avgLoss = losses / period; for (let i = period + 1; i < closes.length; i++) { const c = closes[i] - closes[i-1]; avgGain = (avgGain * (period - 1) + (c > 0 ? c : 0)) / period; avgLoss = (avgLoss * (period - 1) + (c < 0 ? -c : 0)) / period; } if (avgLoss === 0) return 100; return 100 - (100 / (1 + avgGain / avgLoss)); }
+
 function calculateATR(klines, period=14) { if (klines.length < period) return 0; const trs = []; for (let i = 1; i < klines.length; i++) { const high = parseFloat(klines[i][2]), low = parseFloat(klines[i][3]), prevClose = parseFloat(klines[i-1][4]); trs.push(Math.max(high - low, Math.abs(high - prevClose), Math.abs(low - prevClose))); } return trs.slice(-period).reduce((a,b) => a+b, 0) / period; }
+
 function calculateEMAarray(closes, period) { if (closes.length < period) return []; const k = 2 / (period + 1); const emas = []; let ema = closes.slice(0, period).reduce((a,b) => a+b, 0) / period; emas[period-1] = ema; for (let i = period; i < closes.length; i++) { ema = closes[i] * k + ema * (1 - k); emas[i] = ema; } return emas; }
+
 function calculateMACD(closes, fast=12, slow=26, signal=9) { const ef = calculateEMAarray(closes, fast), es = calculateEMAarray(closes, slow); if (!ef.length || !es.length) return { histogram: 0, prevHist: 0, cross: 'NONE' }; const macdLine = []; for (let i = 0; i < closes.length; i++) if (ef[i] !== undefined && es[i] !== undefined) macdLine[i] = ef[i] - es[i]; const valid = macdLine.filter(v => v !== undefined); if (valid.length < signal + 2) return { histogram: 0, prevHist: 0, cross: 'NONE' }; const sk = 2 / (signal + 1); let sig = valid.slice(0, signal).reduce((a,b) => a+b, 0) / signal; const sigArr = []; for (let i = signal; i < valid.length; i++) { sig = valid[i] * sk + sig * (1 - sk); sigArr.push(sig); } const hist = valid[valid.length-1] - sigArr[sigArr.length-1]; const prevHist = valid[valid.length-2] - sigArr[sigArr.length-2]; let cross = 'NONE'; if (prevHist <= 0 && hist > 0) cross = 'BULLISH_CROSS'; else if (prevHist >= 0 && hist < 0) cross = 'BEARISH_CROSS'; return { histogram: hist, prevHist, cross }; }
+
 function calculateBollinger(closes, period=20, mult=2) { if (closes.length < period) return { percentB: 0.5, squeeze: false }; const slice = closes.slice(-period); const middle = slice.reduce((a,b) => a+b, 0) / period; const std = Math.sqrt(slice.map(c => (c-middle)**2).reduce((a,b) => a+b, 0) / period); const upper = middle + mult*std, lower = middle - mult*std; const price = closes[closes.length-1]; const percentB = (upper - lower) !== 0 ? (price - lower) / (upper - lower) : 0.5; let squeeze = false; if (closes.length >= period * 2) { let bwSum = 0, bwCount = 0; for (let i = period; i <= closes.length - period; i++) { const s = closes.slice(i - period, i); const m = s.reduce((a,b) => a+b, 0) / period; const sd = Math.sqrt(s.map(c => (c-m)**2).reduce((a,b) => a+b, 0) / period); if (m > 0) { bwSum += (4 * sd / m) * 100; bwCount++; } } const bw = middle > 0 ? (4 * std / middle) * 100 : 0; squeeze = bwCount > 0 && bw < (bwSum / bwCount) * 0.75; } return { percentB, squeeze }; }
+
 function calculateStochastic(klines, period=14) { if (klines.length < period) return { k: 50, d: 50 }; const raws = []; for (let i = period - 1; i < klines.length; i++) { const sl = klines.slice(i - period + 1, i + 1); const hh = Math.max(...sl.map(k => parseFloat(k[2]))); const ll = Math.min(...sl.map(k => parseFloat(k[3]))); const c = parseFloat(klines[i][4]); raws.push(hh !== ll ? ((c - ll) / (hh - ll)) * 100 : 50); } const kArr = []; for (let i = 2; i < raws.length; i++) kArr.push((raws[i] + raws[i-1] + raws[i-2]) / 3); const k = kArr[kArr.length-1] || 50; const d = kArr.length >= 3 ? (kArr[kArr.length-1] + kArr[kArr.length-2] + kArr[kArr.length-3]) / 3 : k; return { k, d }; }
+
 function calculateVWAP(klines) { let pv = 0, v = 0; klines.forEach(k => { const tp = (parseFloat(k[2]) + parseFloat(k[3]) + parseFloat(k[4])) / 3; const vol = parseFloat(k[5]); pv += tp * vol; v += vol; }); return v > 0 ? pv / v : null; }
+
 function calculateDeltaProxy(klines) { let buyFlow = 0, sellFlow = 0; for (let i = Math.max(0, klines.length - 10); i < klines.length; i++) { const h = parseFloat(klines[i][2]), l = parseFloat(klines[i][3]), c = parseFloat(klines[i][4]); const range = h - l; const pos = range > 0 ? (c - l) / range : 0.5; const vol = parseFloat(klines[i][5]); buyFlow += vol * pos; sellFlow += vol * (1 - pos); } return (buyFlow + sellFlow) > 0 ? (buyFlow / (buyFlow + sellFlow)) * 100 : 50; }
+
 function detectCandlePatterns(klines) { const patterns = []; const n = klines.length; if (n < 3) return patterns; const o1=parseFloat(klines[n-1][1]), h1=parseFloat(klines[n-1][2]), l1=parseFloat(klines[n-1][3]), c1=parseFloat(klines[n-1][4]); const o2=parseFloat(klines[n-2][1]), c2=parseFloat(klines[n-2][4]); const body1 = Math.abs(c1-o1), range1 = h1-l1; const upW1 = h1 - Math.max(o1,c1), loW1 = Math.min(o1,c1) - l1; if (c2 < o2 && c1 > o1 && c1 > o2 && o1 < c2 && body1 > Math.abs(c2-o2)) patterns.push({ name:'Boğa Yutan', type:'PUMP', strength:3 }); if (c2 > o2 && c1 < o1 && c1 < o2 && o1 > c2 && body1 > Math.abs(c2-o2)) patterns.push({ name:'Ayı Yutan', type:'DUMP', strength:3 }); if (range1 > 0 && loW1 > body1*2 && upW1 < body1*0.5 && body1 > 0) patterns.push({ name:'Çekiç', type:'PUMP', strength:2 }); if (range1 > 0 && upW1 > body1*2 && loW1 < body1*0.5 && body1 > 0) patterns.push({ name:'Kayan Yıldız', type:'DUMP', strength:2 }); if (range1 > 0 && body1 / range1 < 0.1) patterns.push({ name:'Doji', type:'NEUTRAL', strength:1 }); return patterns; }
+
 function calculateStreak(closes) { let streak = 0; for (let i = closes.length - 1; i > 0; i--) { const ch = closes[i] - closes[i-1]; if (streak === 0) { if (ch !== 0) streak = ch > 0 ? 1 : -1; } else if (streak > 0 && ch > 0) streak++; else if (streak < 0 && ch < 0) streak--; else break; } return streak; }
+
 function updateIndicatorPerformance(signal, result) { if (!signal || !signal.activeIndicators) return; signal.activeIndicators.forEach(indicator => { if (!learningData.indicatorPerformance[indicator]) learningData.indicatorPerformance[indicator] = { wins: 0, losses: 0, total: 0 }; learningData.indicatorPerformance[indicator].total++; if (result === 'WIN') learningData.indicatorPerformance[indicator].wins++; else if (result === 'LOSS') learningData.indicatorPerformance[indicator].losses++; }); Object.keys(learningData.indicatorPerformance).forEach(indicator => { const perf = learningData.indicatorPerformance[indicator]; if (perf.total >= 5) { const winRate = perf.wins / perf.total; if (winRate < 0.45) learningData.dynamicWeights[indicator] = 0.2; else if (winRate > 0.65) learningData.dynamicWeights[indicator] = Math.min(1.5, 0.5 + (winRate * 1.0)); else learningData.dynamicWeights[indicator] = 1.0; } }); }
+
 function updateStrategyPerformance(strategy, result, pnl) { if (!strategy || !learningData.strategyPerformance[strategy]) return; const perf = learningData.strategyPerformance[strategy]; if (result === 'WIN') { perf.wins++; perf.avgPnl = (perf.avgPnl * (perf.wins - 1) + pnl) / perf.wins; } else if (result === 'LOSS') { perf.losses++; } }
+
 function autoTuneParameters() { const resolved = learningData.signals.filter(s => s.result !== 'PENDING'); if (resolved.length < CONFIG.AUTO_TUNE_INTERVAL) return; const recent = resolved.slice(-CONFIG.AUTO_TUNE_INTERVAL); const winRate = recent.filter(s => s.result === 'WIN').length / recent.length; if (winRate < 0.4) { learningData.autoTunedParams.tp1Mult = Math.max(0.8, learningData.autoTunedParams.tp1Mult * 0.95); learningData.autoTunedParams.slMult = Math.min(8.0, learningData.autoTunedParams.slMult * 1.05); log(`🔧 Auto-tune: TP küçültüldü (${fmt(learningData.autoTunedParams.tp1Mult,2)}x), SL büyütüldü (${fmt(learningData.autoTunedParams.slMult,1)}x)`, 'warn'); } else if (winRate > 0.7) { learningData.autoTunedParams.tp1Mult = Math.min(2.0, learningData.autoTunedParams.tp1Mult * 1.05); log(`✅ Auto-tune: TP büyütüldü (${fmt(learningData.autoTunedParams.tp1Mult,2)}x)`, 'success'); } const breakoutPerf = learningData.strategyPerformance.breakout; const breakoutTotal = breakoutPerf.wins + breakoutPerf.losses; if (breakoutTotal >= 3) { const breakoutWR = breakoutPerf.wins / breakoutTotal; if (breakoutWR < 0.40 && !learningData.autoTunedParams.breakoutBanned) { learningData.autoTunedParams.breakoutBanned = true; log(`🚨 BREAKOUT YASAKLANDI!`, 'error'); } else if (breakoutWR > 0.60 && learningData.autoTunedParams.breakoutBanned) { learningData.autoTunedParams.breakoutBanned = false; log(`✅ BREAKOUT YASAĞI KALDIRILDI!`, 'success'); } } const strategies = Object.entries(learningData.strategyPerformance).filter(([k,v]) => v.wins + v.losses >= 3); if (strategies.length > 0) { const best = strategies.sort((a,b) => (b[1].wins / (b[1].wins + b[1].losses)) - (a[1].wins / (a[1].wins + a[1].losses)))[0]; if (best && best[0] !== 'breakout') { learningData.autoTunedParams.strategy = best[0]; log(`🏆 En iyi strateji: ${best[0].toUpperCase()}`, 'success'); } } learningData.lastAutoTune = Date.now(); saveLearningData(); }
+
 function getBestStrategy(adx, volMult, lsRatio, price, high20, low20, upperWickRatio, lowerWickRatio, rsi, direction, smartPatterns) { if (smartPatterns && smartPatterns.length > 0) { const hasPumpPattern = smartPatterns.some(p => p.direction === 'PUMP'); const hasDumpPattern = smartPatterns.some(p => p.direction === 'DUMP'); if (hasPumpPattern && direction === 'PUMP') return 'harmonic'; if (hasDumpPattern && direction === 'DUMP') return 'harmonic'; } if (learningData.autoTunedParams.breakoutBanned) return direction === 'PUMP' ? 'scalping' : 'swing'; if (direction === 'PUMP' && lowerWickRatio > 0.4) return 'scalping'; if (direction === 'DUMP' && upperWickRatio > 0.4) return 'scalping'; const isRealBreakout = (direction === 'PUMP' && price > high20 * 0.995) || (direction === 'DUMP' && price < low20 * 1.005); if (!isRealBreakout) return 'swing'; const isRsiTrap = (direction === 'PUMP' && rsi > 80) || (direction === 'DUMP' && rsi < 20); if (isRsiTrap) return 'scalping'; if (isRealBreakout && adx > 25 && volMult > 2.5 && !isRsiTrap) return 'breakout'; return 'swing'; }
+
 function isLateSignal(d, direction) { const closes = d.closes; if (!closes || closes.length < 10) return { isLate: false, movePercent: 0 }; const tf = safeValue('timeframe', '5m'); const thresholds = { '5m': 2.0, '15m': 5.0, '1h': 8.0, '4h': 12.0 }; const threshold = thresholds[tf] || 2.0; const price5Ago = closes[closes.length - 6]; const currentPrice = closes[closes.length - 1]; const movePercent = Math.abs((currentPrice - price5Ago) / price5Ago) * 100; if (movePercent > threshold) { log(`⚠️ ${d.symbol} geç sinyal! Son 5 mumda %${fmt(movePercent,2)} hareket (>${threshold}%). YÜKSEK RİSK!`, 'warn'); return { isLate: true, movePercent: movePercent }; } return { isLate: false, movePercent: movePercent }; }
+
 function isRsiBlocked(d, direction) { const rsi = d.rsi; const isPump = direction === 'PUMP'; const isDump = direction === 'DUMP'; if (isPump && rsi > CONFIG.RSI_OVERBOUGHT_LIMIT) { log(`🚫 ${d.symbol} LONG ENGELLENDİ! RSI ${fmt(rsi,0)} >${CONFIG.RSI_OVERBOUGHT_LIMIT}`, 'error'); return { blocked: true, reason: `RSI ${fmt(rsi,0)} >${CONFIG.RSI_OVERBOUGHT_LIMIT} - Aşırı Alım` }; } if (isDump && rsi < CONFIG.RSI_OVERSOLD_LIMIT) { log(`🚫 ${d.symbol} SHORT ENGELLENDİ! RSI ${fmt(rsi,0)} <${CONFIG.RSI_OVERSOLD_LIMIT}`, 'error'); return { blocked: true, reason: `RSI ${fmt(rsi,0)} <${CONFIG.RSI_OVERSOLD_LIMIT} - Aşırı Satım` }; } return { blocked: false, reason: null }; }
+
 function recordSignalResult(signalId, result, pnlPercent) { const idx = learningData.signals.findIndex(s => s.id === signalId); if (idx === -1) return; const signal = learningData.signals[idx]; signal.result = result; signal.pnl = pnlPercent; signal.resolvedAt = Date.now(); updateIndicatorPerformance(signal, result); updateStrategyPerformance(signal.strategy, result, pnlPercent); saveLearningData(); updateLearningDisplay(); log(`📊 ${signal.symbol}${signal.direction} ${result}:${pnlPercent > 0 ? '+' : ''}${fmt(pnlPercent, 2)}\% [${signal.strategy}]`, result === 'WIN' ? 'success' : 'error'); const resolved = learningData.signals.filter(s => s.result !== 'PENDING'); if (resolved.length % CONFIG.AUTO_TUNE_INTERVAL === 0) autoTuneParameters(); }
+
 function trackNewSignal(coin, strategy) { const tenMinutesAgo = Date.now() - CONFIG.DUPLICATE_WINDOW; const recentSignal = learningData.signals.find(s => s.symbol === coin.symbol && s.direction === coin.direction && s.strategy === strategy && s.timestamp > tenMinutesAgo); if (recentSignal) { log(`⚠️ ${coin.symbol} ${coin.direction}${strategy} için son 10 dk'da zaten sinyal var.`, 'warn'); return null; } const fiveMinutesAgo = Date.now() - 300000; const anyRecentSignal = learningData.signals.find(s => s.symbol === coin.symbol && s.timestamp > fiveMinutesAgo); if (anyRecentSignal) { log(`⚠️ ${coin.symbol} için son 5 dk'da farklı stratejide sinyal var.`, 'warn'); return null; } const id = coin.symbol + '_' + Date.now(); const signalData = { id, symbol: coin.symbol, direction: coin.direction, entryPrice: coin.price, score: coin.advanced ? coin.advanced.finalScore : coin.baseScore, tp1: parseFloat(coin.expectation.tp1.replace(/[^0-9.-]/g, '')), tp2: parseFloat(coin.expectation.tp2.replace(/[^0-9.-]/g, '')), tp3: parseFloat(coin.expectation.tp3.replace(/[^0-9.-]/g, '')), sl: parseFloat(coin.expectation.stopLoss.replace(/[^0-9.-]/g, '')), patterns: coin.patterns || [], timestamp: Date.now(), timeframe: safeValue('timeframe', '5m'), result: 'PENDING', pnl: 0, strategy: strategy || 'scalping', activeIndicators: coin.activeIndicators || [], hour: new Date().getHours(), liqData: coin.liqData || null, smartPatterns: coin.smartPatterns || null }; learningData.signals.push(signalData); if (learningData.signals.length > 200) learningData.signals.shift(); saveLearningData(); log(`✅ ${coin.symbol}${strategy.toUpperCase()} sinyal kaydedildi`, 'success'); 
 
 if (telegramSettings.botToken && telegramSettings.chatId && telegramSettings.autoSend !== 'disabled') {
@@ -1452,7 +1596,9 @@ sendTelegramMessage(tgText);
 }
 
 return id; }
+
 async function checkPendingSignals() { const pending = learningData.signals.filter(s => s.result === 'PENDING'); if (pending.length === 0) { log('ℹ️ Bekleyen sinyal yok', 'info'); return; } log(`🔍 ${pending.length} bekleyen sinyal kontrol ediliyor...`, 'info'); for (const signal of pending) { try { const tf = signal.timeframe || '5m'; const tfParam = TF_MAP[tf] || '5m'; const url = `${CONFIG.apiBinanceFutures}/fapi/v1/klines?symbol=${signal.symbol}&interval=${tfParam}&limit=10`; const klines = await fetchJSON(url); if (!klines || klines.length === 0) continue; const currentPrice = parseFloat(klines[klines.length-1][4]); const lastCandle = klines[klines.length-1]; const lastClose = parseFloat(lastCandle[4]); const isPump = signal.direction === 'PUMP'; const isShort = signal.direction === 'DUMP'; let pnl = 0, result = 'PENDING'; const timePassed = Date.now() - signal.timestamp; const maxDuration = signal.strategy === 'scalping' ? 3600000 : (signal.strategy === 'swing' ? 14400000 : (signal.strategy === 'liquidity' ? 7200000 : (signal.strategy === 'harmonic' ? 7200000 : 28800000))); if (timePassed > maxDuration) { result = 'CLOSED'; pnl = isPump ? ((currentPrice - signal.entryPrice) / signal.entryPrice) * 100 : ((signal.entryPrice - currentPrice) / signal.entryPrice) * 100; if (pnl > 1.0) result = 'WIN'; else if (pnl < -2.0) result = 'LOSS'; else result = 'CLOSED'; } else { if (isPump) { if (lastClose <= signal.sl) { result = 'LOSS'; pnl = ((signal.sl - signal.entryPrice) / signal.entryPrice) * 100; } else if (lastClose >= signal.tp3) { result = 'WIN'; pnl = ((signal.tp3 - signal.entryPrice) / signal.entryPrice) * 100; } else if (lastClose >= signal.tp2) { result = 'WIN'; pnl = ((signal.tp2 - signal.entryPrice) / signal.entryPrice) * 100; } else if (lastClose >= signal.tp1) { result = 'WIN'; pnl = ((signal.tp1 - signal.entryPrice) / signal.entryPrice) * 100; } } else if (isShort) { if (lastClose >= signal.sl) { result = 'LOSS'; pnl = ((signal.entryPrice - signal.sl) / signal.entryPrice) * 100; } else if (lastClose <= signal.tp3) { result = 'WIN'; pnl = ((signal.entryPrice - signal.tp3) / signal.entryPrice) * 100; } else if (lastClose <= signal.tp2) { result = 'WIN'; pnl = ((signal.entryPrice - signal.tp2) / signal.entryPrice) * 100; } else if (lastClose <= signal.tp1) { result = 'WIN'; pnl = ((signal.entryPrice - signal.tp1) / signal.entryPrice) * 100; } } } if (result !== 'PENDING') recordSignalResult(signal.id, result, pnl); } catch(e) { log(`❌ ${signal.symbol} kontrol hatası: ${e.message}`, 'error'); } await new Promise(r => setTimeout(r, 200)); } updateLearningDisplay(); }
+
 function generateAIStrategy() { const resolved = learningData.signals.filter(s => s.result !== 'PENDING'); if (resolved.length < 3) return `<div class="insight-item neutral">En az 3 sonuçlanan sinyal gerekli. (Şu an: ${resolved.length})</div>`; const indPerf = Object.entries(learningData.indicatorPerformance).filter(([_, p]) => p.total >= 3).map(([name, p]) => ({ name, winRate: p.wins / p.total, weight: learningData.dynamicWeights[name] || 1.0 })).sort((a, b) => b.winRate - a.winRate).slice(0, 3); if (indPerf.length === 0) return `<div class="insight-item neutral">Gösterge verisi toplanıyor...</div>`; const bestIndicators = indPerf.map(i => i.name).join(', '); const avgWinRate = (indPerf.reduce((a,b) => a + b.winRate, 0) / indPerf.length) * 100; return `<div class="insight-item positive"><strong>🎯 En Başarılı Kombinasyon:</strong> [${bestIndicators}] (Başarı: \%${fmt(avgWinRate,1)})</div>`; }
 
 function updateLearningDisplay() {
@@ -2257,54 +2403,6 @@ updateLearningDisplay();
 updateLiquidityDisplay();
 renderAdminPendingList();
 scanOnce();
-// --- YENİ EKLENECEK FONKSİYONLAR ---
-function renderAdminPendingList() {
-    const tbody = document.getElementById('adminPendingListBody');
-    if(!tbody) return;
-    
-    let pendingUsers = JSON.parse(localStorage.getItem('zeusPendingRequests')) || [];
-    
-    if(pendingUsers.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:#8b949e;">Onay bekleyen talep yok.</td></tr>`;
-        return;
-    }
-
-    tbody.innerHTML = pendingUsers.map((u, index) => `
-        <tr>
-            <td><b>${u.user}</b></td>
-            <td><code>${u.pass}</code></td>
-            <td>
-                <button onclick="approvePendingUser(${index})" style="background:#238636; padding:4px 10px; font-size:11px; margin-right:5px;">Onayla</button>
-                <button onclick="rejectPendingUser(${index})" style="background:#da3633; padding:4px 10px; font-size:11px;">Reddet</button>
-            </td>
-        </tr>
-    `).join('');
-}
-
-function approvePendingUser(index) {
-    let pendingUsers = JSON.parse(localStorage.getItem('zeusPendingRequests')) || [];
-    const userToApprove = pendingUsers[index];
-    
-    if(userToApprove) {
-        appUsers.push({ user: userToApprove.user, pass: userToApprove.pass, role: 'member' });
-        saveUsers();
-        
-        pendingUsers.splice(index, 1);
-        localStorage.setItem('zeusPendingRequests', JSON.stringify(pendingUsers));
-        
-        renderAdminPendingList();
-        renderAdminUserList();
-        alert(`"${userToApprove.user}" onaylandı ve üyeliği aktifleşti!`);
-    }
-}
-
-function rejectPendingUser(index) {
-    let pendingUsers = JSON.parse(localStorage.getItem('zeusPendingRequests')) || [];
-    pendingUsers.splice(index, 1);
-    localStorage.setItem('zeusPendingRequests', JSON.stringify(pendingUsers));
-    renderAdminPendingList();
-}
-// ------------------------------------
 </script>
 
 <!-- KODU ŞİFRELEME VE GİZLEME (OBFUSCATION WRAPPER) -->
